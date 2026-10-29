@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121412">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Box Clock WOD Timer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: the gym's wall clock up top (LED panel, rubber-floor surround), setup + Open archive below like a whiteboard */
+:root{
+  --floor:#121412;      /* rubber floor */
+  --panel:#070807;      /* LED housing */
+  --rail:#1d201d;       /* surfaces */
+  --line:#2c302c;
+  --chalk:#e9ebe6;      /* text */
+  --dust:#8d938b;       /* muted text */
+  --led:#3df25c;        /* work: wall-timer green */
+  --led-rest:#ff3b2b;   /* rest */
+  --led-white:#eef1ff;  /* round digits */
+  --housing:#050606;
+  --led-prep:#ffb21f;   /* countdown */
+  --ghost:rgba(255,255,255,.035);
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--floor);color:var(--chalk)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:880px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 48px;display:flex;flex-direction:column;gap:18px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--led-prep);outline-offset:2px}
+
+/* ---------- clock ---------- */
+.clock{--c:var(--led);display:flex;flex-direction:column;gap:12px;align-items:center}
+.clock[data-phase="rest"]{--c:var(--led-rest)}
+.clock[data-phase="prep"]{--c:var(--led-prep)}
+.clock:fullscreen{justify-content:center;background:var(--floor);padding:2vh 3vw;gap:8px}
+.housing{width:100%;aspect-ratio:3.1/1;max-width:100%;background:linear-gradient(180deg,#0d0f0f 0,var(--housing) 18%,var(--housing) 100%);border:4px solid #1b1d1d;border-radius:7px;box-shadow:0 0 0 1px #2c2f2f,inset 0 0 0 1px #000,0 14px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;padding:2.2% 4.5% 3.5%;container-type:inline-size}
+.clock:fullscreen .clock-row{align-items:center;gap:8px}
+.clock:fullscreen .housing{width:min(96vw,calc((96vh - 150px) * 3.1))}
+.clock:fullscreen .controls{width:min(96vw,calc((96vh - 150px) * 3.1))}
+.clock:fullscreen .controls .btn{padding:6px;min-height:44px;font-size:16px}
+.hlabels{display:flex;align-items:center;gap:2cqi;font-family:var(--f-display);font-weight:800;font-style:italic;text-transform:uppercase;color:#c9cdcd;font-size:2.6cqi;letter-spacing:.06em;line-height:1}
+.hlabels i{flex:1;height:2px;background:linear-gradient(90deg,transparent,#4a4e4e 30%,#4a4e4e 70%,transparent);opacity:.8}
+.digits{flex:1;min-height:0;display:flex;justify-content:center;align-items:center;gap:1.6cqi;padding-top:2.2cqi}
+.digits svg.d{height:86%;width:auto;overflow:visible}
+.digits svg.colon{height:86%;width:auto}
+.digits svg.white .seg.on{fill:var(--led-white);filter:drop-shadow(0 0 5px rgba(220,230,255,.35))}
+.clock-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em}
+.phase{color:var(--c);font-weight:700;font-size:15px}
+.wodname{color:var(--dust);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.seg{fill:var(--ghost);transition:fill .06s}
+.seg.on{fill:var(--c);filter:drop-shadow(0 0 5px color-mix(in srgb,var(--c) 45%,transparent))}
+.clock.blink .digits svg:not(.white) .seg.on{animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.15}}
+.clock-sub{width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.06em}
+.stat{display:flex;flex-direction:column;align-items:center;gap:0}
+.stat b{font-size:clamp(22px,5vw,30px);font-weight:700;color:var(--chalk);font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1.1}
+.stat span{font-size:11px;color:var(--dust);font-weight:600}
+.checkpoint{min-height:20px;text-align:center;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-size:14px;color:var(--led-prep);font-weight:600}
+.awake{font-size:12px;color:var(--dust);text-align:center;display:flex;align-items:center;gap:6px;justify-content:center}
+.awake::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--led)}
+.awake.warn{color:var(--led-prep)}
+.awake.warn::before{background:var(--led-prep)}
+.icon-btns{position:absolute;top:8px;right:8px;display:none}
+
+/* ---------- controls ---------- */
+.clock-row{width:100%;display:flex;flex-direction:column;gap:12px}
+.controls{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px}
+.btn.stop{background:transparent;border-color:color-mix(in srgb,var(--led-rest) 35%,var(--line));color:var(--led-rest)}
+/* Landscape phone / wide screens: buttons stack right of the clock, in thumb reach */
+/* Landscape phone: clock fills the height, a low button bar sits right underneath */
+@media (orientation:landscape) and (max-height:540px){
+  .wrap{padding-block:6px 40px}
+  .clock{gap:6px}
+  .clock-row{gap:6px;align-items:center}
+  .housing{width:min(100%,calc(100vh - 62px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 3.1)}
+}
+@media (orientation:landscape) and (max-height:540px), (display-mode:fullscreen){
+  .controls{width:min(100%,calc(100vh - 62px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) * 3.1)}
+  .controls .btn{padding:6px;font-size:15px;min-height:44px}
+  .controls .btn.go{font-size:17px}
+}
+.clock:fullscreen .clock-row{max-width:96vw}
+[hidden]{display:none!important}
+.btn{border:1px solid var(--line);background:var(--rail);border-radius:10px;padding:14px 10px;font-family:var(--f-display);font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:.06em;transition:transform .06s,background .15s}
+.btn:active{transform:scale(.97)}
+.btn.go{background:var(--led);border-color:var(--led);color:#03150a;font-size:22px}
+.btn.go.paused{background:transparent;border-color:color-mix(in srgb,var(--led-prep) 35%,var(--line));color:var(--led-prep)}
+.btn.lap{background:transparent}
+.btn[disabled]{opacity:.35;cursor:default}
+.toggles{display:flex;flex-wrap:wrap;gap:8px}
+.tog{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:7px 13px;font-size:13px;color:var(--dust)}
+.tog[aria-pressed="true"]{color:var(--chalk);border-color:var(--dust)}
+.tog i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.tog[aria-pressed="true"] i{background:var(--led)}
+
+/* ---------- loaded workout ---------- */
+.loaded{border-left:3px solid var(--led);background:var(--rail);border-radius:0 10px 10px 0;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.loaded h3{margin:0;font-family:var(--f-display);font-size:20px;letter-spacing:.03em;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.loaded p{margin:0;color:var(--chalk);max-width:65ch}
+.loaded small{color:var(--dust)}
+.loaded .x{margin-left:auto;background:none;border:0;color:var(--dust);font-size:13px;text-decoration:underline}
+
+/* ---------- laps ---------- */
+.laps{display:flex;flex-direction:column;gap:6px}
+.laps ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}
+.laps li{display:flex;justify-content:space-between;gap:8px;background:var(--rail);border-radius:8px;padding:6px 10px;font-variant-numeric:tabular-nums;font-size:14px}
+.laps li span{color:var(--dust)}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;font-family:var(--f-display);font-weight:700;font-size:18px;letter-spacing:.06em;text-transform:uppercase;color:var(--dust);margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--chalk);border-bottom-color:var(--led)}
+h2.lbl{margin:0;font-family:var(--f-display);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--dust);font-weight:600}
+
+.modes{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.mode{border:1px solid var(--line);background:transparent;border-radius:9px;padding:10px 4px;font-family:var(--f-display);font-weight:700;font-size:16px;letter-spacing:.04em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:1px}
+.mode small{font-family:var(--f-body);font-weight:400;font-size:11px;letter-spacing:0;text-transform:none;color:var(--dust)}
+.mode[aria-pressed="true"]{border-color:var(--led);background:color-mix(in srgb,var(--led) 12%,transparent)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.step{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--rail);border-radius:10px;padding:8px 8px 8px 14px}
+.step label{font-size:13px;color:var(--dust);line-height:1.2}
+.step .ctl{display:flex;align-items:center;gap:6px}
+.step output{min-width:66px;text-align:center;font-family:var(--f-display);font-weight:700;font-size:24px;font-variant-numeric:tabular-nums}
+.step button{width:40px;height:40px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:20px;line-height:1}
+.summary{color:var(--dust);font-size:14px}
+.summary b{color:var(--chalk);font-weight:600}
+.panel{display:flex;flex-direction:column;gap:14px;padding-top:4px}
+
+/* ---------- open archive ---------- */
+.years{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.yr{flex:0 0 auto;border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.04em;color:var(--dust);font-variant-numeric:tabular-nums}
+.yr[aria-pressed="true"]{color:#1a0402;background:var(--chalk);border-color:var(--chalk)}
+.search{width:100%;border:1px solid var(--line);background:var(--rail);border-radius:10px;padding:11px 14px;color:var(--chalk);font:inherit}
+.search::placeholder{color:var(--dust)}
+.wods{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.wod{display:flex;flex-direction:column;gap:6px;text-align:left;background:var(--rail);border:1px solid transparent;border-radius:10px;padding:12px 14px;min-width:0}
+.wod:hover{border-color:var(--line)}
+.wod.active{border-color:var(--led)}
+.wod-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.wod-h strong{font-family:var(--f-display);font-size:26px;font-weight:800;letter-spacing:.02em;line-height:1}
+.badge{font-family:var(--f-display);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:5px;background:var(--panel);color:var(--led);white-space:nowrap}
+.badge.am{color:var(--led-prep)}
+.badge.em{color:var(--led-rest)}
+.wod p{margin:0;font-size:14px;color:var(--chalk)}
+.wod small{color:var(--dust);font-size:12px}
+.empty{color:var(--dust)}
+footer{color:var(--dust);font-size:12px}
+
+@media (max-width:520px){
+  .modes{grid-template-columns:repeat(3,1fr)}
+  .controls .btn{font-size:14px;padding:13px 4px;letter-spacing:.02em}
+  .controls .btn.go{font-size:17px}
+  .btn{font-size:16px;padding:13px 6px}
+  .btn.go{font-size:19px}
+}
+@media (prefers-reduced-motion:reduce){.clock.blink .digits svg .seg.on{animation:none}.btn:active{transform:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <section class="clock" id="clock" data-phase="idle" aria-label="Timer-Anzeige">
+    <div class="clock-row">
+    <div class="housing">
+      <div class="hlabels"><span>WOD</span><i></i><i></i><span>Timer</span></div>
+      <div class="digits" id="digits" role="timer" aria-live="off"></div>
+    </div>
+    <div class="controls">
+      <button class="btn go" id="bGo" type="button">Start</button>
+      <button class="btn stop" id="bDone" type="button" disabled>Stopp</button>
+      <button class="btn lap" id="bLap" type="button" disabled>+ Runde</button>
+      <button class="btn" id="bReset" type="button">Reset</button>
+    </div>
+    </div>
+    <div class="clock-top">
+      <span class="phase" id="phase">Bereit</span>
+      <span class="wodname" id="wodname">For Time</span>
+    </div>
+    <div class="checkpoint" id="checkpoint"></div>
+    <div class="awake" id="awake" hidden></div>
+    <div class="clock-sub">
+      <div class="stat"><b id="sRound">0</b><span id="sRoundLbl">Runden</span></div>
+      <div class="stat"><b id="sTotal">00:00</b><span>Gesamt</span></div>
+      <div class="stat"><b id="sCap">—</b><span id="sCapLbl">Time Cap</span></div>
+    </div>
+  </section>
+
+
+  <div class="toggles">
+    <button class="tog" id="tPrep" type="button" aria-pressed="true"><i></i>10 s Countdown</button>
+    <button class="tog" id="tSound" type="button" aria-pressed="true"><i></i>Ton</button>
+    <button class="tog" id="tFull" type="button" aria-pressed="false"><i></i>Vollbild</button>
+  </div>
+
+  <div class="loaded" id="loaded" hidden></div>
+
+  <div class="laps" id="laps" hidden>
+    <h2 class="lbl">Rundenzeiten</h2>
+    <ol id="lapList"></ol>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabSetup" aria-selected="true" type="button">Timer</button>
+    <button class="tab" role="tab" id="tabOpen" aria-selected="false" type="button">Open</button>
+    <button class="tab" role="tab" id="tabBench" aria-selected="false" type="button">Benchmarks</button>
+  </div>
+
+  <section class="panel" id="pSetup">
+    <div class="modes" id="modes"></div>
+    <div class="fields" id="fields"></div>
+    <div class="summary" id="summary"></div>
+  </section>
+
+  <section class="panel" id="pOpen" hidden>
+    <div class="years" id="years"></div>
+    <input class="search" id="q" type="search" placeholder="Suchen: z. B. Thrusters, 16.5, Wall Balls" autocomplete="off">
+    <div class="wods" id="wods"></div>
+    <footer>Rx-Gewichte als Männer/Frauen in lb. Wiederholte Workouts (z. B. 14.4 → 23.1) sind in jedem Jahr eigenständig gelistet. Workouts mit Zeitverlängerung laufen als For Time mit Checkpoint-Signal.</footer>
+  </section>
+
+  <section class="panel" id="pBench" hidden>
+    <div class="wods" id="bench"></div>
+    <footer>Die klassischen „Girls“. Rx-Gewichte als Männer/Frauen in lb. For-Time-Benchmarks laufen ohne Cap, „Stopp“ hält deine Zeit fest.</footer>
+  </section>
+</div>
+
+<script>
+/* ===================== Open archive ===================== */
+// m: ft = For Time (cap min, 0 = ohne), am = AMRAP (min), em = Intervall-Takt (s, Runden)
+const W = [
+ ["11.1","am",10,"30 Double-Unders · 15 Power Snatches 75/55"],
+ ["11.2","am",15,"9 Deadlifts 155/100 · 12 Push-ups · 15 Box Jumps 24\""],
+ ["11.3","am",5,"Squat Clean & Jerk 165/110, so viele Reps wie möglich"],
+ ["11.4","am",10,"60 Bar-facing Burpees · 30 Overhead Squats 120/90 · 10 Ring Muscle-ups"],
+ ["11.5","am",20,"5 Power Cleans 145/100 · 10 Toes-to-Bar · 15 Wall Balls 20/14"],
+ ["11.6","am",7,"Leiter 3-6-9-12…: Thrusters 100/65 + Chest-to-Bar Pull-ups"],
+ ["12.1","am",7,"Burpees (Ziel 6\" über Reichhöhe)"],
+ ["12.2","am",10,"Snatch-Leiter: 30 @75/45 · 30 @135/75 · 30 @165/100 · max @210/120"],
+ ["12.3","am",18,"15 Box Jumps 24/20\" · 12 Push Press 115/75 · 9 Toes-to-Bar"],
+ ["12.4","am",12,"150 Wall Balls 20/14 · 90 Double-Unders · 30 Muscle-ups"],
+ ["12.5","am",7,"Leiter 3-6-9…: Thrusters 100/65 + Chest-to-Bar Pull-ups"],
+ ["13.1","am",17,"40 Burpees · 30 Snatches 75/45 · 30 Burpees · 30 Snatches 135/75 · 20 Burpees · 30 Snatches 165/100 · 10 Burpees · max Snatches 210/120"],
+ ["13.2","am",10,"5 Shoulder-to-Overhead 115/75 · 10 Deadlifts 115/75 · 15 Box Jumps 24/20\""],
+ ["13.3","am",12,"150 Wall Balls 20/14 · 90 Double-Unders · 30 Muscle-ups (Wdh. 12.4)"],
+ ["13.4","am",7,"Leiter 3-3, 6-6, 9-9…: Clean & Jerks 135/95 + Toes-to-Bar"],
+ ["13.5","ft",20,"15 Thrusters 100/65 · 15 Chest-to-Bar im Wechsel. Start mit 4 Min; je 90 Reps +4 Min",[4,8,12,16]],
+ ["14.1","am",10,"30 Double-Unders · 15 Power Snatches 75/55 (Wdh. 11.1)"],
+ ["14.2","em",180,10,"Alle 3 Min je 2 Runden: Overhead Squats 95/65 + Chest-to-Bar. Erst 10er, dann 12er, 14er … bis eine Runde nicht geschafft ist"],
+ ["14.3","am",8,"Deadlift-Leiter 10-15-20-25-30-35 Reps (135→365 / 95→225), dazwischen je 15 Box Jumps 24/20\""],
+ ["14.4","am",14,"60 Cal Row · 50 Toes-to-Bar · 40 Wall Balls 20/14 · 30 Cleans 135/95 · 20 Muscle-ups"],
+ ["14.5","ft",0,"21-18-15-12-9-6-3: Thrusters 95/65 · Bar-facing Burpees"],
+ ["15.1","am",9,"15 Toes-to-Bar · 10 Deadlifts 115/75 · 5 Snatches 115/75"],
+ ["15.1a","am",6,"Clean & Jerk 1RM, direkt im Anschluss an 15.1"],
+ ["15.2","em",180,10,"Wdh. 14.2: alle 3 Min 2 Runden Overhead Squats 95/65 + Chest-to-Bar, 10er → 12er → 14er …"],
+ ["15.3","am",14,"7 Muscle-ups · 50 Wall Balls 20/14 · 100 Double-Unders"],
+ ["15.4","am",8,"Leiter: 3 HSPU + 3 Cleans 185/125, 6+3, 9+6, 12+6, 15+9, 18+9 …"],
+ ["15.5","ft",0,"27-21-15-9: Cal Row · Thrusters 95/65"],
+ ["16.1","am",20,"25 ft OH Walking Lunge 95/65 · 8 Bar-facing Burpees · 25 ft OH Lunge · 8 Chest-to-Bar"],
+ ["16.2","em",240,5,"Alle 4 Min: 25 Toes-to-Bar · 50 Double-Unders · Squat Cleans 15 @135/85, dann 13 @185/115, 11 @225/145, 9 @275/175, 7 @315/205"],
+ ["16.3","am",7,"10 Power Snatches 75/55 · 3 Bar Muscle-ups"],
+ ["16.4","am",13,"55 Deadlifts 225/155 · 55 Wall Balls 20/14 · 55 Cal Row · 55 HSPU"],
+ ["16.5","ft",0,"21-18-15-12-9-6-3: Thrusters 95/65 · Bar-facing Burpees (Wdh. 14.5)"],
+ ["17.1","ft",20,"DB Snatches 10-20-30-40-50 (50/35), nach jedem Satz 15 Burpee Box Jump-overs 24/20\""],
+ ["17.2","em",240,3,"Alle 4 Min 2 Runden: 50 ft DB Walking Lunge · 16 Toes-to-Bar · 8 DB Power Cleans 50/35; ab dem 2. Block Bar Muscle-ups statt T2B"],
+ ["17.3","ft",24,"Chest-to-Bar + Squat Snatches: 6+6 @95/65, 7+5 @135/95, 8+4 @185/135, 9+3 @225/155, 10+2 @245/175, 11+1 @265/185. Start Cap 8 Min, +4 je Stufe",[8,12,16,20]],
+ ["17.4","am",13,"55 Deadlifts 225/155 · 55 Wall Balls · 55 Cal Row · 55 HSPU (Wdh. 16.4)"],
+ ["17.5","ft",40,"10 Runden: 9 Thrusters 95/65 · 35 Double-Unders"],
+ ["18.1","am",20,"8 Toes-to-Bar · 10 DB Hang Clean & Jerks 50/35 · 14/12 Cal Row"],
+ ["18.2","ft",12,"1-2-3 … 10: DB Squats 50/35 + Bar-facing Burpees; Restzeit 18.2a Clean 1RM"],
+ ["18.3","ft",14,"2 Runden: 100 DU · 20 OHS 115/80 · 100 DU · 12 Ring Muscle-ups · 100 DU · 20 DB Snatches 50/35 · 100 DU · 12 Bar Muscle-ups"],
+ ["18.4","ft",9,"21-15-9 Deadlifts 225/155 + HSPU, dann 21-15-9 Deadlifts 315/205 + 50 ft Handstand Walk"],
+ ["18.5","am",7,"Leiter 3-6-9…: Thrusters 100/65 + Chest-to-Bar (Wdh. 11.6)"],
+ ["19.1","am",15,"19 Wall Balls 20/14 · 19 Cal Row"],
+ ["19.2","ft",20,"25 T2B · 50 DU · 15 Squat Cleans 135/85 · 25 T2B · 50 DU · 13 @185/115; je +4 Min: 11 @225/145, 9 @275/175, 7 @315/205",[8,12,16]],
+ ["19.3","ft",10,"200 ft DB OH Lunge 50/35 · 50 DB Box Step-ups 24/20\" · 50 Strict HSPU · 200 ft Handstand Walk"],
+ ["19.4","ft",12,"3 Runden: 10 Snatches 95/65 · 12 Bar-facing Burpees; 3 Min Pause; 3 Runden: 10 Bar Muscle-ups · 12 Bar-facing Burpees",[],[["9:00","Pause"],["12:00","Bar MU Teil"]]],
+ ["19.5","ft",20,"33-27-21-15-9: Thrusters 95/65 · Chest-to-Bar"],
+ ["20.1","ft",15,"10 Runden: 8 Ground-to-Overhead 95/65 · 10 Bar-facing Burpees"],
+ ["20.2","am",20,"4 DB Thrusters 50/35 · 6 Toes-to-Bar · 24 Double-Unders"],
+ ["20.3","ft",9,"21-15-9 Deadlifts 225/155 + HSPU, dann 21-15-9 Deadlifts 315/205 + 50 ft Handstand Walk (Wdh. 18.4)"],
+ ["20.4","ft",20,"30 Box Jumps · 15 C&J 95/65 · 30 Box Jumps · 15 C&J 135/85 · 30 Single-leg Squats · 15 C&J 185/115 · 30 Pistols · 15 C&J 225/145"],
+ ["20.5","ft",20,"Partitioniert: 40 Ring Muscle-ups · 80 Cal Row · 120 Wall Balls 20/14"],
+ ["21.1","ft",15,"Wall Walks und Double-Unders: 1/10, 3/30, 6/60, 9/90, 15/150, 21/210"],
+ ["21.2","ft",20,"DB Snatches 10-20-30-40-50 (50/35), nach jedem Satz 15 Burpee Step-overs"],
+ ["21.3","ft",15,"15 Front Squats · 30 T2B · 15 Thrusters; 1 Min Pause; 15 FS · 30 C2B · 15 Thrusters; 1 Min Pause; 15 FS · 30 Bar MU · 15 Thrusters (95/65)"],
+ ["21.4","am",7,"Komplex 1RM: Deadlift, Clean, Hang Clean, Jerk – direkt nach 21.3"],
+ ["22.1","am",15,"3 Wall Walks · 12 DB Snatches 50/35 · 15 Box Jump-overs 20\""],
+ ["22.2","ft",10,"1-2-3 … 10 … 3-2-1: Deadlifts 225/155 + Bar-facing Burpees"],
+ ["22.3","ft",12,"21 Pull-ups · 42 DU · 21 Thrusters 95/65 · 18 C2B · 36 DU · 18 Thrusters 115/75 · 15 Bar MU · 30 DU · 15 Thrusters 135/85"],
+ ["23.1","am",14,"60 Cal Row · 50 T2B · 40 Wall Balls · 30 Cleans 135/85 · 20 Muscle-ups (Wdh. 14.4)"],
+ ["23.2A","am",15,"Burpee Pull-ups und Shuttle Runs: 5 + 10 Shuttles, je Runde +5 Burpee Pull-ups"],
+ ["23.2B","am",5,"Thruster 1RM, direkt im Anschluss an 23.2A"],
+ ["23.3","ft",9,"5 Wall Walks · 50 DU · 15 Snatches 95/65 · 5 WW · 50 DU · 12 Snatches 135/95; bei Abschluss +3 Min: 20 Strict HSPU · 50 DU · 9 @185/125 · 20 HSPU · 50 DU · 6 @225/155",[6]],
+ ["24.1","ft",15,"21-15-9: DB Snatches Arm 1 · Lateral Burpees über DB · DB Snatches Arm 2 · Lateral Burpees (50/35)"],
+ ["24.2","am",20,"300 m Row · 10 Deadlifts 185/125 · 50 Double-Unders"],
+ ["24.3","ft",15,"5 Runden: 10 Thrusters 95/65 · 10 C2B; 1 Min Pause; 5 Runden: 7 Thrusters 135/95 · 7 Bar Muscle-ups"],
+ ["25.1","am",15,"3 Lateral Burpees über DB · 3 DB Hang Clean-to-Overhead 50/35 · 30 ft Walking Lunge; je Runde +3 Reps"],
+ ["25.2","ft",12,"21 Pull-ups · 42 DU · 21 Thrusters 95/65 · 18 C2B · 36 DU · 18 Thrusters 115/75 · 15 Bar MU · 30 DU · 15 Thrusters 135/85 (Wdh. 22.3)"],
+ ["25.3","ft",20,"5 Wall Walks · 50 Cal Row · 5 WW · 25 Deadlifts 225/155 · 5 WW · 25 Cleans 135/85 · 5 WW · 25 Snatches 95/65 · 5 WW · 50 Cal Row"],
+ ["26.1","ft",12,"Wall Balls 20-30-40-66-40-30-20 (20/14 lb), dazwischen je 18 Box Jump-overs 24/20\" bzw. Med-Ball Box Step-overs"],
+ ["26.2","ft",15,"3 Runden: 80 ft DB OH Walking Lunge · 20 DB Snatches (50/35) · 20 Pull-ups → 20 C2B → 20 Ring Muscle-ups"],
+ ["26.3","ft",16,"3 Gewichtsstufen à 2 Runden: 12 Burpees over Bar · 12 Cleans · 12 Burpees over Bar · 12 Thrusters (95/115/135 · 65/75/85)"],
+].map(r=>{
+  const [id,m]=r;
+  if(m==="em") return {id,y:2000+parseInt(id),m,interval:r[2],rounds:r[3],desc:r[4]};
+  return {id,y:2000+parseInt(id),m,min:r[2],desc:r[3],marks:r[4]||[]};
+});
+W.forEach(w=>w.name="Open "+w.id);
+const BENCH=[
+ ["Fran","ft",0,"21-15-9: Thrusters 95/65 · Pull-ups"],
+ ["Cindy","am",20,"5 Pull-ups · 10 Push-ups · 15 Air Squats"],
+ ["Grace","ft",0,"30 Clean & Jerks 135/95"],
+ ["Helen","ft",0,"3 Runden: 400 m Run · 21 KB Swings 53/35 (24/16 kg) · 12 Pull-ups"],
+ ["Annie","ft",0,"50-40-30-20-10: Double-Unders · Sit-ups"],
+ ["Diane","ft",0,"21-15-9: Deadlifts 225/155 · Handstand Push-ups"],
+ ["Elizabeth","ft",0,"21-15-9: Cleans 135/95 · Ring Dips"],
+ ["Karen","ft",0,"150 Wall Balls 20/14"],
+ ["Jackie","ft",0,"1000 m Row · 50 Thrusters 45/35 · 30 Pull-ups"],
+ ["Nancy","ft",0,"5 Runden: 400 m Run · 15 Overhead Squats 95/65"],
+].map(([id,m,min,desc])=>({id,name:id,m,min,desc,marks:[]}));
+
+/* ===================== seven segment ===================== */
+const SEG={a:"6.5,4 10.5,0 39.5,0 43.5,4 39.5,8 10.5,8",g:"6.5,50 10.5,46 39.5,46 43.5,50 39.5,54 10.5,54",d:"6.5,96 10.5,92 39.5,92 43.5,96 39.5,100 10.5,100",f:"4,6.5 8,10.5 8,43.5 4,47.5 0,43.5 0,10.5",e:"4,52.5 8,56.5 8,89.5 4,93.5 0,89.5 0,56.5",b:"46,6.5 50,10.5 50,43.5 46,47.5 42,43.5 42,10.5",c:"46,52.5 50,56.5 50,89.5 46,93.5 42,89.5 42,56.5"};
+const MAP={"0":"abcdef","1":"bc","2":"abged","3":"abgcd","4":"fgbc","5":"afgcd","6":"afgedc","7":"abc","8":"abcdefg","9":"abcdfg"," ":""};
+const digitsEl=document.getElementById("digits");
+const digitSegs=[];
+function mkDigit(cls){
+  const ns="http://www.w3.org/2000/svg";
+  const s=document.createElementNS(ns,"svg");s.setAttribute("viewBox","-1 -1 52 102");s.setAttribute("class","d"+(cls?" "+cls:""));
+  const g=document.createElementNS(ns,"g");
+  const segs={};
+  for(const k in SEG){const p=document.createElementNS(ns,"polygon");p.setAttribute("points",SEG[k]);p.setAttribute("class","seg");g.appendChild(p);segs[k]=p}
+  s.appendChild(g);digitsEl.appendChild(s);digitSegs.push(segs);
+}
+function mkColon(cls){
+  const ns="http://www.w3.org/2000/svg";
+  const s=document.createElementNS(ns,"svg");s.setAttribute("viewBox","0 0 10 100");s.setAttribute("class","colon"+(cls?" "+cls:""));
+  for(const y of [31,63]){const c=document.createElementNS(ns,"rect");c.setAttribute("x","1");c.setAttribute("y",y);c.setAttribute("width","8");c.setAttribute("height","8");c.setAttribute("class","seg on");s.appendChild(c)}
+  digitsEl.appendChild(s);
+}
+mkDigit("white");mkDigit("white");mkColon("white");mkDigit();mkDigit();mkColon();mkDigit();mkDigit();
+let lastShown="";
+function show(str){ // "RRMMSS", space = dark digit
+  if(str===lastShown)return;lastShown=str;
+  str.split("").forEach((ch,i)=>{const on=MAP[ch]||"";for(const k in digitSegs[i])digitSegs[i][k].classList.toggle("on",on.includes(k))});
+  digitsEl.setAttribute("aria-label",`Runde ${str.slice(0,2).trim()||0}, ${str.slice(2,4)}:${str.slice(4)}`);
+}
+const pad=n=>String(n).padStart(2,"0");
+const mmss=s=>{s=Math.max(0,Math.floor(s));const m=Math.min(99,Math.floor(s/60));return pad(m)+":"+pad(s%60)};
+const fmtDur=s=>s%60===0?`${s/60} Min`:mmss(s);
+
+/* ===================== config ===================== */
+const MODES=[
+ {k:"ft",t:"For Time",s:"Hochzählen"},
+ {k:"am",t:"AMRAP",s:"Runterzählen"},
+ {k:"em",t:"EMOM",s:"Intervall-Takt"},
+ {k:"tb",t:"Tabata",s:"20/10 × 8"},
+ {k:"iv",t:"Intervall",s:"Work/Rest"},
+];
+const DEF={mode:"ft",cap:1200,amrap:720,emInt:60,emRounds:10,tbWork:20,tbRest:10,tbRounds:8,ivWork:60,ivRest:30,ivRounds:5,prep:true,sound:true};
+let cfg={...DEF};
+let preset=null; // loaded open workout
+try{const s=JSON.parse(localStorage.getItem("boxclock")||"null");if(s)cfg={...DEF,...s}}catch(e){}
+const save=()=>{try{localStorage.setItem("boxclock",JSON.stringify(cfg))}catch(e){}};
+
+const FIELDS={
+ ft:[["cap","Time Cap (0 = ohne)",60,0,5940]],
+ am:[["amrap","Dauer",60,60,5940]],
+ em:[["emInt","Alle",15,15,1200],["emRounds","Runden",1,1,99,"n"]],
+ tb:[["tbWork","Arbeit",5,5,600],["tbRest","Pause",5,0,600],["tbRounds","Runden",1,1,99,"n"]],
+ iv:[["ivWork","Arbeit",15,5,3600],["ivRest","Pause",15,0,3600],["ivRounds","Runden",1,1,99,"n"]],
+};
+
+function buildPlan(){
+  const segs=[];let marks=[];
+  const m=cfg.mode;
+  if(m==="ft"){segs.push({kind:"work",dur:cfg.cap||Infinity,up:true,round:0});marks=preset&&preset.m==="ft"?preset.marks.map(x=>x*60):[]}
+  else if(m==="am"){segs.push({kind:"work",dur:cfg.amrap,up:false,round:0})}
+  else if(m==="em"){for(let i=1;i<=cfg.emRounds;i++)segs.push({kind:"work",dur:cfg.emInt,up:false,round:i,of:cfg.emRounds})}
+  else{
+    const w=cfg[m+"Work"],r=cfg[m+"Rest"],n=cfg[m+"Rounds"];
+    for(let i=1;i<=n;i++){segs.push({kind:"work",dur:w,up:false,round:i,of:n});if(r>0&&i<n)segs.push({kind:"rest",dur:r,up:false,round:i,of:n})}
+  }
+  const prep=cfg.prep?10:0;
+  let t=prep;segs.forEach(s=>{s.start=t;t+=s.dur;s.end=t});
+  return {prep,segs,total:t,marks};
+}
+
+/* ===================== audio ===================== */
+let ac=null;
+function audio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==="suspended")ac.resume();return ac}
+function beep(freq=880,dur=.15,vol=.35,delay=0){
+  if(!cfg.sound||!ac)return;
+  const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
+  o.type="square";o.frequency.value=freq;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.setValueAtTime(vol,t+dur-.03);g.gain.linearRampToValueAtTime(0,t+dur);
+  o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur+.02);
+}
+const sfx={
+  tick:()=>beep(660,.12,.3),
+  go:()=>beep(1320,.55,.35),
+  rest:()=>beep(520,.5,.3),
+  mark:()=>{beep(1000,.12,.3);beep(1000,.12,.3,.18)},
+  end:()=>{beep(440,1.2,.4);beep(330,1.2,.25)},
+};
+
+/* ===================== runtime ===================== */
+const $=id=>document.getElementById(id);
+const clock=$("clock");
+let plan=buildPlan();
+let state="idle"; // idle | run | pause | done
+let acc=0,t0=0,raf=0,iv=0,laps=[],lastKey="",lastSeg=-2,marksHit=new Set(),wake=null;
+
+function elapsed(){return (acc+(state==="run"?performance.now()-t0:0))/1000}
+
+function render(){
+  const t=elapsed();
+  let phase="Bereit",shown=0,roundTxt="",segIdx=-1,seg=null;
+  if(state==="idle"){
+    seg=plan.segs[0];shown=seg.up?0:seg.dur;
+  }else if(state==="done"){
+    const last=plan.segs[plan.segs.length-1];
+    phase="Zeit!";shown=last.up?Math.min(t,last.end)-plan.prep:0;
+    if(cfg.mode==="ft"&&laps.length&&laps.finished)shown=laps.finished;
+  }else if(t<plan.prep){
+    phase="Achtung";shown=Math.ceil(plan.prep-t);segIdx=-1;
+  }else{
+    segIdx=plan.segs.findIndex(s=>t<s.end);if(segIdx<0)segIdx=plan.segs.length-1;
+    seg=plan.segs[segIdx];
+    phase=seg.kind==="rest"?"Pause":(state==="idle"?"Bereit":"Los");
+    shown=seg.up?t-seg.start:Math.ceil(seg.end-t-1e-6);
+    if(state==="idle")shown=seg.up?0:seg.dur;
+  }
+  if(state==="pause")phase="Pause ‖";
+  const s=Math.max(0,Math.floor(shown));
+  let rv;
+  if(["em","tb","iv"].includes(cfg.mode)){const n=plan.segs.filter(x=>x.kind==="work").length;rv=seg?seg.round:(state==="done"?n:1)}
+  else rv=laps.length;
+  show(pad(Math.min(99,rv))+pad(Math.min(99,Math.floor(s/60)))+pad(s%60));
+  clock.dataset.phase=state==="idle"?"idle":(t<plan.prep&&state!=="done"?"prep":(seg&&seg.kind==="rest"?"rest":"work"));
+  clock.classList.toggle("blink",state==="done"||state==="pause");
+  $("phase").textContent=phase;
+
+  // stats
+  const work=Math.max(0,Math.min(t,plan.total)-plan.prep);
+  $("sTotal").textContent=mmss(state==="done"&&laps.finished?laps.finished:work);
+  if(["em","tb","iv"].includes(cfg.mode)){
+    const n=plan.segs.filter(x=>x.kind==="work").length;
+    const r=seg?seg.round:(state==="done"?n:1);
+    $("sRound").textContent=`${r}/${n}`;$("sRoundLbl").textContent="Intervall";
+    $("sCap").textContent=mmss(plan.total-plan.prep);$("sCapLbl").textContent="Dauer";
+  }else{
+    $("sRound").textContent=laps.length;$("sRoundLbl").textContent="Runden";
+    if(cfg.mode==="ft"){$("sCap").textContent=cfg.cap?mmss(cfg.cap):"ohne";$("sCapLbl").textContent="Time Cap"}
+    else{$("sCap").textContent=mmss(cfg.amrap);$("sCapLbl").textContent="AMRAP"}
+  }
+  // checkpoint label
+  const nextMark=plan.marks.find(m=>m>work);
+  $("checkpoint").textContent=plan.marks.length&&state!=="done"?(nextMark?`Nächster Checkpoint ${mmss(nextMark)}`:"Letzte Stufe"):"";
+
+  // sounds
+  if(state==="run"){
+    if(segIdx!==lastSeg){
+      if(lastSeg!==-2||plan.prep===0){
+        if(segIdx>=0)(seg.kind==="rest"?sfx.rest:sfx.go)();
+      }
+      lastSeg=segIdx;
+    }
+    let rem=null;
+    if(t<plan.prep)rem=Math.ceil(plan.prep-t);
+    else if(seg&&isFinite(seg.dur))rem=Math.ceil(seg.end-t);
+    const key=segIdx+":"+rem;
+    if(rem!==null&&rem<=3&&rem>=1&&key!==lastKey){lastKey=key;sfx.tick()}
+    plan.marks.forEach(m=>{if(work>=m&&!marksHit.has(m)){marksHit.add(m);sfx.mark()}});
+    if(t>=plan.total)finish();
+  }
+}
+function loop(){render();if(state==="run")raf=requestAnimationFrame(loop)}
+
+function start(){
+  audio();
+  if(state==="done")reset();
+  if(state==="idle"){try{if(!document.fullscreenElement&&clock.requestFullscreen)clock.requestFullscreen().catch(()=>{})}catch(e){}}
+  if(!document.fullscreenElement){try{window.scrollTo({top:0})}catch(e){}}
+  if(state==="idle"){plan=buildPlan();lastSeg=-2;lastKey="";marksHit=new Set();laps=[];renderLaps();if(!plan.prep){lastSeg=-3}}
+  t0=performance.now();state="run";
+  clearInterval(iv);iv=setInterval(render,250); // keeps sound going in background tabs
+  requestWake();updButtons();loop();
+}
+function pause(){acc+=performance.now()-t0;state="pause";clearInterval(iv);cancelAnimationFrame(raf);updButtons();render()}
+function finish(){
+  const t=elapsed();acc=Math.min(t,plan.total)*1000;state="done";clearInterval(iv);cancelAnimationFrame(raf);sfx.end();releaseWake();updButtons();render();
+}
+function reset(){try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}state="idle";acc=0;clearInterval(iv);cancelAnimationFrame(raf);laps=[];renderLaps();plan=buildPlan();releaseWake();updButtons();render()}
+function lap(){
+  if(state!=="run")return;
+  const work=elapsed()-plan.prep;if(work<0)return;
+  laps.push(work);renderLaps();render();
+}
+function finishForTime(){ // in For Time the lap button becomes "Fertig"
+  const work=elapsed()-plan.prep;if(work<0)return;
+  laps.finished=work;acc=elapsed()*1000;state="done";clearInterval(iv);cancelAnimationFrame(raf);sfx.end();releaseWake();updButtons();render();
+}
+function renderLaps(){
+  const list=$("lapList");list.innerHTML="";
+  laps.forEach((t,i)=>{const li=document.createElement("li");const split=t-(i?laps[i-1]:0);li.innerHTML=`<span>R${i+1} · ${mmss(split)}</span><b>${mmss(t)}</b>`;list.appendChild(li)});
+  $("laps").hidden=!laps.length;
+}
+function updButtons(){
+  const go=$("bGo");
+  go.textContent=state==="run"?"Pause":(state==="pause"?"Weiter":(state==="done"?"Neu starten":"Start"));
+  go.classList.toggle("paused",state==="run");
+  const lb=$("bLap");
+  lb.disabled=state!=="run"||["em","tb","iv"].includes(cfg.mode);
+  const ft=cfg.mode==="ft";
+  $("bDone").disabled=!(state==="run"||state==="pause");
+}
+/* Keep the screen awake: Wake Lock API first, a silent looping video as fallback (older iOS, frames that refuse the API) */
+const awakeVid=document.createElement("video");
+awakeVid.setAttribute("playsinline","");awakeVid.setAttribute("muted","");awakeVid.muted=true;awakeVid.loop=true;
+awakeVid.setAttribute("aria-hidden","true");
+awakeVid.style.cssText="position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;left:0;bottom:0";
+awakeVid.src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMxbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAlt0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHTbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABfm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAT5zdGJsAAAAvnN0c2QAAAAAAAAAAQAAAK5hdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAANGF2Y0MBZAAK/+EAF2dkAAqs2V7ARAAAAwAEAAADAAg8SJZYAQAGaOvjxMhM/fj4AAAAABBwYXNwAAAAAQAAAAEAAAAUYnRydAAAAAAAAAtUAAALVAAAABhzdHRzAAAAAAAAAAEAAAACAABAAAAAABRzdHNzAAAAAAAAAAEAAAABAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAACAAAAAQAAABxzdHN6AAAAAAAAAAAAAAACAAACyAAAAA0AAAAUc3RjbwAAAAAAAAABAAADYQAAAGJ1ZHRhAAAAWm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALWlsc3QAAAAlqXRvbwAAAB1kYXRhAAAAAQAAAABMYXZmNjAuMTYuMTAwAAAACGZyZWUAAALdbWRhdAAAAq8GBf//q9xF6b3m2Ui3lizYINkj7u94MjY0IC0gY29yZSAxNjQgcjMxMDggMzFlMTlmOSAtIEguMjY0L01QRUctNCBBVkMgY29kZWMgLSBDb3B5bGVmdCAyMDAzLTIwMjMgLSBodHRwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRpb25zOiBjYWJhYz0xIHJlZj0zIGRlYmxvY2s9MTotMzotMyBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9Mi4wMDowLjcwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tNCB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTEgc2NlbmVjdXQ9NDAgaW50cmFfcmVmcmVzaD0wIHJjX2xvb2thaGVhZD00MCByYz1jcmYgbWJ0cmVlPTEgY3JmPTIzLjAgcWNvbXA9MC42MCBxcG1pbj0wIHFwbWF4PTY5IHFwc3RlcD00IGlwX3JhdGlvPTEuNDAgYXE9MToxLjIwAIAAAAARZYiEABfOf/731LfMsu4HI4EAAAAJQZohbEF85/7w";
+document.body.appendChild(awakeVid);
+let awakeMode="";
+async function requestWake(){
+  const keep=state==="run"||state==="pause";if(!keep)return;
+  if(!("wakeLock" in navigator)){try{awakeVid.play().then(()=>{awakeMode="video";showAwake()}).catch(()=>{awakeMode="";showAwake()})}catch(e){}return}
+  if(!wake){
+    try{
+      wake=await navigator.wakeLock.request("screen");awakeMode="lock";
+      wake.addEventListener("release",()=>{wake=null;if((state==="run"||state==="pause")&&document.visibilityState==="visible")requestWake()});
+    }catch(e){wake=null}
+  }
+  if(!wake){try{await awakeVid.play();awakeMode="video"}catch(e){awakeMode=""}}
+  showAwake();
+}
+function releaseWake(){try{wake&&wake.release()}catch(e){}wake=null;try{awakeVid.pause()}catch(e){}awakeMode="";showAwake()}
+function showAwake(){
+  const el=$("awake");if(!el)return;
+  const on=state==="run"||state==="pause";
+  el.hidden=!on;
+  el.textContent=awakeMode?"Bildschirm bleibt an":"Bildschirmsperre konnte nicht verhindert werden – Auto-Sperre im Handy kurz deaktivieren";
+  el.classList.toggle("warn",!awakeMode);
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&(state==="run"||state==="pause"))requestWake()});
+
+$("bGo").onclick=()=>state==="run"?pause():start();
+$("bReset").onclick=reset;
+$("bLap").onclick=lap;
+$("bDone").onclick=()=>{if(state==="pause"){t0=performance.now();state="run"}finishForTime()};
+// long-press-free "done" for For Time: double tap on clock
+clock.addEventListener("dblclick",()=>{if(cfg.mode==="ft"&&state==="run")finishForTime()});
+document.addEventListener("keydown",e=>{
+  if(e.target.matches("input"))return;
+  if(e.code==="Space"){e.preventDefault();$("bGo").click()}
+  else if(e.key==="r"||e.key==="R")reset();
+  else if(e.key==="Enter"||e.key==="l")lap();
+  else if(e.key==="f"&&cfg.mode==="ft")finishForTime();
+});
+
+/* ===================== toggles ===================== */
+function bindTog(id,key){const b=$(id);b.setAttribute("aria-pressed",cfg[key]);b.onclick=()=>{cfg[key]=!cfg[key];b.setAttribute("aria-pressed",cfg[key]);save();if(state==="idle"){plan=buildPlan();render()}}}
+bindTog("tPrep","prep");bindTog("tSound","sound");
+$("tFull").onclick=async()=>{
+  try{if(document.fullscreenElement)await document.exitFullscreen();else await clock.requestFullscreen()}catch(e){$("tFull").textContent="Vollbild nicht verfügbar"}
+};
+document.addEventListener("fullscreenchange",()=>$("tFull").setAttribute("aria-pressed",!!document.fullscreenElement));
+
+/* ===================== setup UI ===================== */
+function renderModes(){
+  const box=$("modes");box.innerHTML="";
+  MODES.forEach(m=>{const b=document.createElement("button");b.type="button";b.className="mode";b.setAttribute("aria-pressed",cfg.mode===m.k);b.innerHTML=`${m.t}<small>${m.s}</small>`;
+    b.onclick=()=>{if(state==="run")return;cfg.mode=m.k;preset=null;save();renderAll();reset()};box.appendChild(b)});
+}
+function renderFields(){
+  const box=$("fields");box.innerHTML="";
+  FIELDS[cfg.mode].forEach(([k,label,step,min,max,type])=>{
+    const row=document.createElement("div");row.className="step";
+    const out=()=>type==="n"?String(cfg[k]):(k==="cap"&&cfg[k]===0?"ohne":mmss(cfg[k]));
+    row.innerHTML=`<label for="o_${k}">${label}</label><div class="ctl"><button type="button" aria-label="${label} verringern">−</button><output id="o_${k}">${out()}</output><button type="button" aria-label="${label} erhöhen">+</button></div>`;
+    const [minus,plus]=row.querySelectorAll("button");const o=row.querySelector("output");
+    let holdT=0;
+    const change=d=>{if(state==="run")return;cfg[k]=Math.min(max,Math.max(min,cfg[k]+d*step));o.textContent=out();save();if(state!=="pause"){reset()}renderSummary()};
+    const hold=(btn,d)=>{
+      btn.addEventListener("pointerdown",e=>{change(d);let n=0;holdT=setInterval(()=>{n++;if(n>3)change(d)},120)});
+      ["pointerup","pointerleave","pointercancel"].forEach(ev=>btn.addEventListener(ev,()=>clearInterval(holdT)));
+      btn.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();change(d)}});
+    };
+    hold(minus,-1);hold(plus,1);
+    box.appendChild(row);
+  });
+  renderSummary();
+}
+function renderSummary(){
+  const m=cfg.mode;let t="";
+  if(m==="ft")t=cfg.cap?`Uhr zählt hoch bis <b>${mmss(cfg.cap)}</b>. Pro Runde „+ Runde“ tippen, „Stopp“ hält deine Endzeit fest.`:"Uhr zählt ohne Limit hoch, „Stopp“ hält deine Endzeit fest.";
+  else if(m==="am")t=`<b>${fmtDur(cfg.amrap)}</b> so viele Runden wie möglich. „+ Runde“ zählt mit und speichert Splits.`;
+  else if(m==="em")t=`Alle <b>${mmss(cfg.emInt)}</b> neu, <b>${cfg.emRounds}</b> Intervalle, gesamt <b>${mmss(cfg.emInt*cfg.emRounds)}</b>.`;
+  else{const w=cfg[m+"Work"],r=cfg[m+"Rest"],n=cfg[m+"Rounds"];t=`<b>${n}×</b> ${mmss(w)} Arbeit / ${mmss(r)} Pause, gesamt <b>${mmss(w*n+r*(n-1))}</b>.`}
+  $("summary").innerHTML=t+" Signale: 3-2-1 Piepen vor jedem Wechsel, langer Ton bei Start und Ende.";
+}
+function renderLoaded(){
+  const box=$("loaded");
+  if(!preset){box.hidden=true;$("wodname").textContent=MODES.find(x=>x.k===cfg.mode).t;return}
+  box.hidden=false;
+  box.innerHTML=`<h3>${preset.name} <span class="badge ${preset.m}">${badge(preset)}</span><button class="x" type="button" id="unload">Entfernen</button></h3><p>${preset.desc}</p>${preset.marks&&preset.marks.length?`<small>Checkpoint-Signal bei ${preset.marks.map(x=>x+":00").join(", ")}</small>`:""}`;
+  $("unload").onclick=()=>{preset=null;renderAll();reset();renderWods();renderBench()};
+  $("wodname").textContent=preset.name;
+}
+function badge(w){
+  if(w.m==="ft")return w.min?`For Time · Cap ${w.min}`:"For Time";
+  if(w.m==="am")return `AMRAP ${w.min}`;
+  return `Alle ${w.interval/60} Min × ${w.rounds}`;
+}
+function loadPreset(w){
+  if(state==="run")pause();
+  preset=w;
+  if(w.m==="ft"){cfg.mode="ft";cfg.cap=w.min*60}
+  else if(w.m==="am"){cfg.mode="am";cfg.amrap=w.min*60}
+  else{cfg.mode="em";cfg.emInt=w.interval;cfg.emRounds=w.rounds}
+  save();renderAll();reset();renderWods();renderBench();
+  window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
+}
+function renderAll(){renderModes();renderFields();renderLoaded()}
+
+/* ===================== open archive UI ===================== */
+const YEARS=[...new Set(W.map(w=>w.y))].sort((a,b)=>b-a);
+let yearSel=YEARS[0];
+function renderYears(){
+  const box=$("years");box.innerHTML="";
+  ["Alle",...YEARS].forEach(y=>{const b=document.createElement("button");b.type="button";b.className="yr";b.textContent=y;b.setAttribute("aria-pressed",yearSel===y);b.onclick=()=>{yearSel=y;renderYears();renderWods()};box.appendChild(b)});
+}
+function renderWods(){
+  const q=$("q").value.trim().toLowerCase();
+  const list=W.filter(w=>(q?true:(yearSel==="Alle"||w.y===yearSel))&&(!q||(w.id+" "+w.desc).toLowerCase().includes(q)));
+  const box=$("wods");box.innerHTML="";
+  if(!list.length){box.innerHTML=`<p class="empty">Kein Workout gefunden. Probier eine Bewegung wie „Snatch“ oder eine Nummer wie „19.5“.</p>`;return}
+  list.sort((a,b)=>b.y-a.y||a.id.localeCompare(b.id,undefined,{numeric:true}));
+  list.forEach(w=>{
+    const b=document.createElement("button");b.type="button";b.className="wod"+(preset===w?" active":"");
+    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${w.desc}</p><small>Tippen zum Laden</small>`;
+    b.onclick=()=>loadPreset(w);box.appendChild(b);
+  });
+}
+$("q").addEventListener("input",renderWods);
+function renderBench(){
+  const box=$("bench");box.innerHTML="";
+  BENCH.forEach(w=>{
+    const b=document.createElement("button");b.type="button";b.className="wod"+(preset===w?" active":"");
+    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${w.desc}</p><small>Tippen zum Laden</small>`;
+    b.onclick=()=>loadPreset(w);box.appendChild(b);
+  });
+}
+
+/* tabs */
+const TABS=[["tabSetup","pSetup"],["tabOpen","pOpen"],["tabBench","pBench"]];
+function selTab(i){TABS.forEach(([t,p],j)=>{$(t).setAttribute("aria-selected",i===j);$(p).hidden=i!==j})}
+TABS.forEach(([t],i)=>$(t).onclick=()=>selTab(i));
+
+/* boot */
+renderAll();renderYears();renderWods();renderBench();reset();
+</script>
+
+</body>
+</html>
