@@ -98,6 +98,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--led-prep);outli
 .btn.lap{background:transparent}
 .btn[disabled]{opacity:.35;cursor:default}
 .toggles{display:flex;flex-wrap:wrap;gap:8px}
+.keys{flex-basis:100%;margin:2px 0 0;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--dust)}
+.keys b{color:var(--chalk);font-weight:600}
+.keys kbd{font:600 11px var(--f-body);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--chalk);background:var(--rail)}
+.clock{position:relative}
+.rtoast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--rail);border:1px solid var(--line);color:var(--chalk);font-family:var(--f-display);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:clamp(14px,2.2vw,22px);padding:6px 14px;border-radius:8px;z-index:5;pointer-events:none;white-space:nowrap}
 .tog{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:7px 13px;font-size:13px;color:var(--dust)}
 .tog[aria-pressed="true"]{color:var(--chalk);border-color:var(--dust)}
 .tog i{width:8px;height:8px;border-radius:50%;background:var(--line)}
@@ -188,6 +193,7 @@ footer{color:var(--dust);font-size:12px}
     </div>
     <div class="checkpoint" id="checkpoint"></div>
     <div class="awake" id="awake" hidden></div>
+    <div class="rtoast" id="rtoast" hidden role="status"></div>
     <div class="clock-sub">
       <div class="stat"><b id="sRound">0</b><span id="sRoundLbl">Runden</span></div>
       <div class="stat"><b id="sTotal">00:00</b><span>Gesamt</span></div>
@@ -200,6 +206,7 @@ footer{color:var(--dust);font-size:12px}
     <button class="tog" id="tPrep" type="button" aria-pressed="true"><i></i>10 s Countdown</button>
     <button class="tog" id="tSound" type="button" aria-pressed="true"><i></i>Ton</button>
     <button class="tog" id="tFull" type="button" aria-pressed="false"><i></i>Vollbild</button>
+    <p class="keys" id="keys"><b>Fernbedienung</b> <span><kbd>⏯</kbd> Start / Pause</span> <span><kbd>OK</kbd> Runde</span> <span><kbd>⏩</kbd> oder <kbd>↩</kbd> Stopp</span> <span><kbd>⏪</kbd> Reset</span></p>
   </div>
 
   <div class="loaded" id="loaded" hidden></div>
@@ -494,7 +501,7 @@ function start(){
   if(state==="idle"){plan=buildPlan();lastSeg=-2;lastKey="";marksHit=new Set();laps=[];renderLaps();if(!plan.prep){lastSeg=-3}}
   t0=performance.now();state="run";
   clearInterval(iv);iv=setInterval(render,250); // keeps sound going in background tabs
-  requestWake();updButtons();loop();
+  requestWake();armBack();updButtons();loop();
 }
 function pause(){acc+=performance.now()-t0;state="pause";clearInterval(iv);cancelAnimationFrame(raf);updButtons();render()}
 function finish(){
@@ -561,13 +568,41 @@ $("bLap").onclick=lap;
 $("bDone").onclick=()=>{if(state==="pause"){t0=performance.now();state="run"}finishForTime()};
 // long-press-free "done" for For Time: double tap on clock
 clock.addEventListener("dblclick",()=>{if(cfg.mode==="ft"&&state==="run")finishForTime()});
+/* ---------- Tastatur + Fernbedienung (Fire TV / Android TV) ---------- */
+function doGo(){$("bGo").click()}
+function doStop(){if(state==="run"||state==="pause")$("bDone").click()}
+function doLap(){if(state==="run"&&!$("bLap").disabled)lap()}
+const REMOTE={
+  // Play/Pause-Taste der Fernbedienung (verschiedene Codes je nach Gerät/Browser)
+  MediaPlayPause:[doGo,"⏯ Start / Pause"],MediaPlay:[doGo,"⏯ Start"],MediaPause:[doGo,"⏯ Pause"],
+  " ":[doGo,"Start / Pause"],
+  Enter:[doLap,"OK · Runde"],
+  MediaRewind:[reset,"⏪ Reset"],
+  MediaFastForward:[doStop,"⏩ Stopp"],MediaStop:[doStop,"⏹ Stopp"],
+  Escape:[doStop,"Stopp"],GoBack:[doStop,"↩ Stopp"],BrowserBack:[doStop,"↩ Stopp"],
+  r:[reset,"Reset"],R:[reset,"Reset"],l:[doLap,"Runde"],f:[doStop,"Stopp"],
+};
+const KEYCODES={179:"MediaPlayPause",415:"MediaPlay",19:"MediaPause",13:"Enter",32:" ",227:"MediaRewind",412:"MediaRewind",228:"MediaFastForward",417:"MediaFastForward",413:"MediaStop",166:"BrowserBack",10009:"GoBack",461:"GoBack"};
+let toastT=0;
+function toast(msg){const el=$("rtoast");el.textContent=msg;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,1200)}
 document.addEventListener("keydown",e=>{
-  if(e.target.matches("input"))return;
-  if(e.code==="Space"){e.preventDefault();$("bGo").click()}
-  else if(e.key==="r"||e.key==="R")reset();
-  else if(e.key==="Enter"||e.key==="l")lap();
-  else if(e.key==="f"&&cfg.mode==="ft")finishForTime();
+  if(e.target.matches&&e.target.matches("input"))return;
+  let k=e.key&&e.key!=="Unidentified"?e.key:"";
+  if(!REMOTE[k])k=KEYCODES[e.keyCode]||"";
+  if(e.key==="Escape"&&document.fullscreenElement&&state!=="run"&&state!=="pause")return; // Esc verlässt nur das Vollbild
+  const act=REMOTE[k];if(!act)return;
+  // OK/Enter auf einem fokussierten Knopf: normaler Klick, nicht doppelt auslösen
+  if((k==="Enter"||k===" ")&&e.target.closest&&e.target.closest("button")&&e.target!==document.body){
+    if(k===" "&&e.target.closest("#bGo"))return;
+    if(!(k==="Enter"&&state==="run"&&e.target.closest(".controls")))return;
+  }
+  e.preventDefault();act[0]();toast(act[1]);
 });
+/* Zurück-Taste: Fire TV schickt sie als Browser-Zurück. Während des Workouts fangen wir sie ab und stoppen. */
+const standalone=(()=>{try{return window.top===window}catch(e){return false}})();
+let backTrap=false;
+function armBack(){if(!standalone||backTrap)return;try{history.pushState({wod:1},"");backTrap=true}catch(e){}}
+window.addEventListener("popstate",()=>{if(!backTrap)return;backTrap=false;if(state==="run"||state==="pause"){doStop();toast("↩ Stopp")}});
 
 /* ===================== toggles ===================== */
 function bindTog(id,key){const b=$(id);b.setAttribute("aria-pressed",cfg[key]);b.onclick=()=>{cfg[key]=!cfg[key];b.setAttribute("aria-pressed",cfg[key]);save();if(state==="idle"){plan=buildPlan();render()}}}
