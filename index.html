@@ -507,7 +507,8 @@ function lap(){
   laps.push(work);renderLaps();render();
 }
 function finishForTime(){ // in For Time the lap button becomes "Fertig"
-  const work=elapsed()-plan.prep;if(work<0)return;
+  const work=elapsed()-plan.prep;
+  if(work<0){reset();return} // Stopp im Countdown bricht ab
   laps.finished=work;acc=elapsed()*1000;state="done";clearInterval(iv);cancelAnimationFrame(raf);sfx.end();releaseWake();updButtons();render();
 }
 function renderLaps(){
