@@ -22,6 +22,7 @@ It is one static `index.html` with no build step and no dependencies apart from 
 
 - A six-digit LED panel like a wall timer. The round number is in white and the time is in green.
 - The time turns **red** during rest and **amber** during the 10-second countdown.
+- **1/100 s toggle:** switches the panel to `MM:SS.hh` with tenths and hundredths of a second, counting up or down depending on the mode, including the optional 10-second countdown. Final time, total and split times show hundredths too. The round number then moves to the stats row under the clock.
 
 ### Sound
 

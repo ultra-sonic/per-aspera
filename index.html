@@ -53,6 +53,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--led-prep);outli
 .digits{flex:1;min-height:0;display:flex;justify-content:center;align-items:center;gap:1.6cqi;padding-top:2.2cqi}
 .digits svg.d{height:86%;width:auto;overflow:visible}
 .digits svg.colon{height:86%;width:auto}
+.digits.hund svg.white .seg.on{fill:var(--c);filter:drop-shadow(0 0 5px color-mix(in srgb,var(--c) 45%,transparent))}
+.digits.hund svg.colon:not(.white) rect:first-child{display:none}
+.digits.hund svg.colon:not(.white) rect:last-child{transform:translateY(26px)}
+.clock.blink .digits.hund svg .seg.on{animation:blink 1s steps(2) infinite}
 .digits svg.white .seg.on{fill:var(--led-white);filter:drop-shadow(0 0 5px rgba(220,230,255,.35))}
 .clock-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em}
 .phase{color:var(--c);font-weight:700;font-size:15px}
@@ -205,6 +209,7 @@ footer{color:var(--dust);font-size:12px}
   <div class="toggles">
     <button class="tog" id="tPrep" type="button" aria-pressed="true"><i></i>10 s Countdown</button>
     <button class="tog" id="tSound" type="button" aria-pressed="true"><i></i>Ton</button>
+    <button class="tog" id="tHund" type="button" aria-pressed="false"><i></i>1/100 s</button>
     <button class="tog" id="tFull" type="button" aria-pressed="false"><i></i>Vollbild</button>
     <p class="keys" id="keys"><b>Fernbedienung</b> <span><kbd>⏯</kbd> Start / Pause</span> <span><kbd>OK</kbd> Runde</span> <span><kbd>⏩</kbd> oder <kbd>↩</kbd> Stopp</span> <span><kbd>⏪</kbd> Reset</span></p>
   </div>
@@ -357,12 +362,17 @@ function mkColon(cls){
 }
 mkDigit("white");mkDigit("white");mkColon("white");mkDigit();mkDigit();mkColon();mkDigit();mkDigit();
 let lastShown="";
-function show(str){ // "RRMMSS", space = dark digit
-  if(str===lastShown)return;lastShown=str;
+function hstr(x){x=Math.max(0,x);const cs=Math.min(5999.99*100,Math.floor(x*100+1e-6));const sec=Math.floor(cs/100);return pad(Math.min(99,Math.floor(sec/60)))+pad(sec%60)+pad(cs%100)}
+function show(str){ // "RRMMSS" oder bei Hundertsteln "MMSShh"
+  const key=(cfg.hund?"h":"r")+str;
+  if(key===lastShown)return;lastShown=key;
+  digitsEl.classList.toggle("hund",!!cfg.hund);
   str.split("").forEach((ch,i)=>{const on=MAP[ch]||"";for(const k in digitSegs[i])digitSegs[i][k].classList.toggle("on",on.includes(k))});
-  digitsEl.setAttribute("aria-label",`Runde ${str.slice(0,2).trim()||0}, ${str.slice(2,4)}:${str.slice(4)}`);
+  if(state==="run")return; // Screenreader-Label nicht 100× pro Sekunde neu schreiben
+  digitsEl.setAttribute("aria-label",cfg.hund?`${str.slice(0,2)}:${str.slice(2,4)},${str.slice(4)}`:`Runde ${str.slice(0,2).trim()||0}, ${str.slice(2,4)}:${str.slice(4)}`);
 }
 const pad=n=>String(n).padStart(2,"0");
+const fmtT=x=>cfg.hund?mmss(x)+","+pad(Math.floor((Math.max(0,x)*100+1e-6)%100)):mmss(x);
 const mmss=s=>{s=Math.max(0,Math.floor(s));const m=Math.min(99,Math.floor(s/60));return pad(m)+":"+pad(s%60)};
 const fmtDur=s=>s%60===0?`${s/60} Min`:mmss(s);
 
@@ -374,7 +384,7 @@ const MODES=[
  {k:"tb",t:"Tabata",s:"20/10 × 8"},
  {k:"iv",t:"Intervall",s:"Work/Rest"},
 ];
-const DEF={mode:"ft",cap:1200,amrap:720,emInt:60,emRounds:10,tbWork:20,tbRest:10,tbRounds:8,ivWork:60,ivRest:30,ivRounds:5,prep:true,sound:true};
+const DEF={mode:"ft",cap:1200,amrap:720,emInt:60,emRounds:10,tbWork:20,tbRest:10,tbRounds:8,ivWork:60,ivRest:30,ivRounds:5,prep:true,sound:true,hund:false};
 let cfg={...DEF};
 let preset=null; // loaded open workout
 try{const s=JSON.parse(localStorage.getItem("boxclock")||"null");if(s)cfg={...DEF,...s}}catch(e){}
@@ -449,17 +459,24 @@ function render(){
   }
   if(state==="pause")phase="Pause ‖";
   const s=Math.max(0,Math.floor(shown));
-  let rv;
-  if(["em","tb","iv"].includes(cfg.mode)){const n=plan.segs.filter(x=>x.kind==="work").length;rv=seg?seg.round:(state==="done"?n:1)}
-  else rv=laps.length;
-  show(pad(Math.min(99,rv))+pad(Math.min(99,Math.floor(s/60)))+pad(s%60));
+  if(cfg.hund){
+    // Hundertstel: MM:SS.hh über alle sechs Stellen, Runterzählen exakt statt aufgerundet
+    let ex=shown;
+    if(state==="run"||state==="pause"){if(t<plan.prep)ex=plan.prep-t;else if(seg&&!seg.up)ex=seg.end-t}
+    show(hstr(ex));
+  }else{
+    let rv;
+    if(["em","tb","iv"].includes(cfg.mode)){const n=plan.segs.filter(x=>x.kind==="work").length;rv=seg?seg.round:(state==="done"?n:1)}
+    else rv=laps.length;
+    show(pad(Math.min(99,rv))+pad(Math.min(99,Math.floor(s/60)))+pad(s%60));
+  }
   clock.dataset.phase=state==="idle"?"idle":(t<plan.prep&&state!=="done"?"prep":(seg&&seg.kind==="rest"?"rest":"work"));
   clock.classList.toggle("blink",state==="done"||state==="pause");
   $("phase").textContent=phase;
 
   // stats
   const work=Math.max(0,Math.min(t,plan.total)-plan.prep);
-  $("sTotal").textContent=mmss(state==="done"&&laps.finished?laps.finished:work);
+  $("sTotal").textContent=fmtT(state==="done"&&laps.finished?laps.finished:work);
   if(["em","tb","iv"].includes(cfg.mode)){
     const n=plan.segs.filter(x=>x.kind==="work").length;
     const r=seg?seg.round:(state==="done"?n:1);
@@ -520,7 +537,7 @@ function finishForTime(){ // in For Time the lap button becomes "Fertig"
 }
 function renderLaps(){
   const list=$("lapList");list.innerHTML="";
-  laps.forEach((t,i)=>{const li=document.createElement("li");const split=t-(i?laps[i-1]:0);li.innerHTML=`<span>R${i+1} · ${mmss(split)}</span><b>${mmss(t)}</b>`;list.appendChild(li)});
+  laps.forEach((t,i)=>{const li=document.createElement("li");const split=t-(i?laps[i-1]:0);li.innerHTML=`<span>R${i+1} · ${fmtT(split)}</span><b>${fmtT(t)}</b>`;list.appendChild(li)});
   $("laps").hidden=!laps.length;
 }
 function updButtons(){
@@ -606,7 +623,8 @@ window.addEventListener("popstate",()=>{if(!backTrap)return;backTrap=false;if(st
 
 /* ===================== toggles ===================== */
 function bindTog(id,key){const b=$(id);b.setAttribute("aria-pressed",cfg[key]);b.onclick=()=>{cfg[key]=!cfg[key];b.setAttribute("aria-pressed",cfg[key]);save();if(state==="idle"){plan=buildPlan();render()}}}
-bindTog("tPrep","prep");bindTog("tSound","sound");
+bindTog("tPrep","prep");bindTog("tSound","sound");bindTog("tHund","hund");
+$("tHund").addEventListener("click",()=>{renderLaps();render()});
 $("tFull").onclick=async()=>{
   try{if(document.fullscreenElement)await document.exitFullscreen();else await clock.requestFullscreen()}catch(e){$("tFull").textContent="Vollbild nicht verfügbar"}
 };
