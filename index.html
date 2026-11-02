@@ -57,11 +57,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--led-prep);outli
 .digits.hund svg.colon:not(.white) rect:first-child{display:none}
 .digits.hund svg.colon:not(.white) rect:last-child{transform:translateY(26px)}
 .clock.blink .digits.hund svg .seg.on{animation:blink 1s steps(2) infinite}
-.tagline{display:flex;justify-content:center;align-items:center;gap:.55cqi;height:4.2cqi;margin-top:1.6cqi;flex:none}
-.tagline svg{height:100%;width:auto;overflow:visible}
-.tagline .sp{width:1.8cqi;height:100%}
-.tagline .seg{fill:rgba(255,255,255,.03)}
-.tagline .seg.on{fill:var(--led-white);opacity:.82;filter:drop-shadow(0 0 3px rgba(220,230,255,.3))}
+.hlabels .motto{font-family:var(--f-body);font-style:normal;font-weight:500;text-transform:none;letter-spacing:.02em;font-size:2.9cqi;color:var(--led);text-shadow:0 0 6px color-mix(in srgb,var(--led) 60%,transparent),0 0 14px color-mix(in srgb,var(--led) 30%,transparent);white-space:nowrap}
 .digits svg.white .seg.on{fill:var(--led-white);filter:drop-shadow(0 0 5px rgba(220,230,255,.35))}
 .clock-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em}
 .phase{color:var(--c);font-weight:700;font-size:15px}
@@ -190,9 +186,8 @@ footer{color:var(--dust);font-size:12px}
   <section class="clock" id="clock" data-phase="idle" aria-label="Timer-Anzeige">
     <div class="clock-row">
     <div class="housing">
-      <div class="hlabels"><span>WOD</span><i></i><i></i><span>Timer</span></div>
+      <div class="hlabels"><span>WOD</span><i></i><em class="motto">per aspera ad astra</em><i></i><span>Timer</span></div>
       <div class="digits" id="digits" role="timer" aria-live="off"></div>
-      <div class="tagline" id="tagline" role="img" aria-label="per aspera ad astra"></div>
     </div>
     <div class="controls">
       <button class="btn go" id="bGo" type="button">Start</button>
@@ -376,17 +371,6 @@ function mkColon(cls){
   for(const y of [31,63]){const c=document.createElementNS(ns,"rect");c.setAttribute("x","1");c.setAttribute("y",y);c.setAttribute("width","8");c.setAttribute("height","8");c.setAttribute("class","seg on");s.appendChild(c)}
   digitsEl.appendChild(s);
 }
-/* Spruch unter der Uhr, aus denselben Siebensegment-Zeichen */
-(function(){
-  const TXT={p:"abefg",e:"abdefg",r:"eg",a:"abcdeg",s:"acdfg",d:"bcdeg",t:"defg"};
-  const box=document.getElementById("tagline"),ns="http://www.w3.org/2000/svg";
-  "per aspera ad astra".split("").forEach(ch=>{
-    if(ch===" "){const sp=document.createElement("span");sp.className="sp";box.appendChild(sp);return}
-    const sv=document.createElementNS(ns,"svg");sv.setAttribute("viewBox","-1 -1 52 102");sv.setAttribute("aria-hidden","true");
-    for(const k in SEG){const pg=document.createElementNS(ns,"polygon");pg.setAttribute("points",SEG[k]);pg.setAttribute("class","seg"+(TXT[ch].includes(k)?" on":""));sv.appendChild(pg)}
-    box.appendChild(sv);
-  });
-})();
 mkDigit("white");mkDigit("white");mkColon("white");mkDigit();mkDigit();mkColon();mkDigit();mkDigit();
 let lastShown="";
 function hstr(x){x=Math.max(0,x);const cs=Math.min(5999.99*100,Math.floor(x*100+1e-6));const sec=Math.floor(cs/100);return pad(Math.min(99,Math.floor(sec/60)))+pad(sec%60)+pad(cs%100)}
