@@ -47,7 +47,7 @@ It is one static `index.html` with no build step and no dependencies apart from 
 - **CrossFit Open:** every Open workout from 11.1 to 26.3. You can filter by year or search by movement. Workouts whose time cap extends as you finish stages (13.5, 17.3, 19.2, 23.3) run as For Time and beep at each checkpoint.
 - **Benchmarks:** Fran, Cindy, Grace, Helen, Annie, Diane, Elizabeth, Karen, Jackie and Nancy, with Rx loads.
 
-Rx loads are listed as men/women in lb. Check the official standards on [games.crossfit.com](https://games.crossfit.com) before you compete.
+Rx loads are listed as men/women. A **kg / lb** switch next to the timer toggles all loads between kilograms (official CrossFit metric equivalents) and pounds. Box heights and distances switch along with it (cm/m or in/ft). Your choice is remembered. Check the official standards on [games.crossfit.com](https://games.crossfit.com) before you compete.
 
 ## Fire TV support 📺
 

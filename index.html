@@ -108,6 +108,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--led-prep);outli
 .keys kbd{font:600 11px var(--f-body);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--chalk);background:var(--rail)}
 .clock{position:relative}
 .rtoast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--rail);border:1px solid var(--line);color:var(--chalk);font-family:var(--f-display);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:clamp(14px,2.2vw,22px);padding:6px 14px;border-radius:8px;z-index:5;pointer-events:none;white-space:nowrap}
+.unit{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.unit button{background:transparent;border:0;padding:7px 13px;font-size:13px;color:var(--dust);font-variant-numeric:tabular-nums}
+.unit button[aria-pressed="true"]{background:var(--chalk);color:var(--floor);font-weight:600}
 .tog{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:7px 13px;font-size:13px;color:var(--dust)}
 .tog[aria-pressed="true"]{color:var(--chalk);border-color:var(--dust)}
 .tog i{width:8px;height:8px;border-radius:50%;background:var(--line)}
@@ -215,6 +218,7 @@ footer{color:var(--dust);font-size:12px}
     <button class="tog" id="tPrep" type="button" aria-pressed="true"><i></i>10 s Countdown</button>
     <button class="tog" id="tSound" type="button" aria-pressed="true"><i></i>Ton</button>
     <button class="tog" id="tHund" type="button" aria-pressed="false"><i></i>1/100 s</button>
+    <div class="unit" role="group" aria-label="Gewichtseinheit"><button type="button" id="uKg" aria-pressed="true">kg</button><button type="button" id="uLb" aria-pressed="false">lb</button></div>
     <button class="tog" id="tFull" type="button" aria-pressed="false"><i></i>Vollbild</button>
     <p class="keys" id="keys"><b>Fernbedienung</b> <span><kbd>⏯</kbd> Start / Pause</span> <span><kbd>OK</kbd> Runde</span> <span><kbd>⏩</kbd> oder <kbd>↩</kbd> Stopp</span> <span><kbd>⏪</kbd> Reset</span></p>
   </div>
@@ -242,12 +246,12 @@ footer{color:var(--dust);font-size:12px}
     <div class="years" id="years"></div>
     <input class="search" id="q" type="search" placeholder="Suchen: z. B. Thrusters, 16.5, Wall Balls" autocomplete="off">
     <div class="wods" id="wods"></div>
-    <footer>Rx-Gewichte als Männer/Frauen in lb. Wiederholte Workouts (z. B. 14.4 → 23.1) sind in jedem Jahr eigenständig gelistet. Workouts mit Zeitverlängerung laufen als For Time mit Checkpoint-Signal.</footer>
+    <footer>Gewichte als Männer/Frauen, Einheit oben mit kg/lb umschalten. Wiederholte Workouts (z. B. 14.4 → 23.1) sind in jedem Jahr eigenständig gelistet. Workouts mit Zeitverlängerung laufen als For Time mit Checkpoint-Signal.</footer>
   </section>
 
   <section class="panel" id="pBench" hidden>
     <div class="wods" id="bench"></div>
-    <footer>Die klassischen „Girls“. Rx-Gewichte als Männer/Frauen in lb. For-Time-Benchmarks laufen ohne Cap, „Stopp“ hält deine Zeit fest.</footer>
+    <footer>Die klassischen „Girls“. For-Time-Benchmarks laufen ohne Cap, „Stopp“ hält deine Zeit fest.</footer>
   </section>
 </div>
 
@@ -255,79 +259,78 @@ footer{color:var(--dust);font-size:12px}
 /* ===================== Open archive ===================== */
 // m: ft = For Time (cap min, 0 = ohne), am = AMRAP (min), em = Intervall-Takt (s, Runden)
 const W = [
- ["11.1","am",10,"30 Double-Unders · 15 Power Snatches 75/55"],
- ["11.2","am",15,"9 Deadlifts 155/100 · 12 Push-ups · 15 Box Jumps 24\""],
- ["11.3","am",5,"Squat Clean & Jerk 165/110, so viele Reps wie möglich"],
- ["11.4","am",10,"60 Bar-facing Burpees · 30 Overhead Squats 120/90 · 10 Ring Muscle-ups"],
- ["11.5","am",20,"5 Power Cleans 145/100 · 10 Toes-to-Bar · 15 Wall Balls 20/14"],
- ["11.6","am",7,"Leiter 3-6-9-12…: Thrusters 100/65 + Chest-to-Bar Pull-ups"],
- ["12.1","am",7,"Burpees (Ziel 6\" über Reichhöhe)"],
- ["12.2","am",10,"Snatch-Leiter: 30 @75/45 · 30 @135/75 · 30 @165/100 · max @210/120"],
- ["12.3","am",18,"15 Box Jumps 24/20\" · 12 Push Press 115/75 · 9 Toes-to-Bar"],
- ["12.4","am",12,"150 Wall Balls 20/14 · 90 Double-Unders · 30 Muscle-ups"],
- ["12.5","am",7,"Leiter 3-6-9…: Thrusters 100/65 + Chest-to-Bar Pull-ups"],
- ["13.1","am",17,"40 Burpees · 30 Snatches 75/45 · 30 Burpees · 30 Snatches 135/75 · 20 Burpees · 30 Snatches 165/100 · 10 Burpees · max Snatches 210/120"],
- ["13.2","am",10,"5 Shoulder-to-Overhead 115/75 · 10 Deadlifts 115/75 · 15 Box Jumps 24/20\""],
- ["13.3","am",12,"150 Wall Balls 20/14 · 90 Double-Unders · 30 Muscle-ups (Wdh. 12.4)"],
- ["13.4","am",7,"Leiter 3-3, 6-6, 9-9…: Clean & Jerks 135/95 + Toes-to-Bar"],
- ["13.5","ft",20,"15 Thrusters 100/65 · 15 Chest-to-Bar im Wechsel. Start mit 4 Min; je 90 Reps +4 Min",[4,8,12,16]],
- ["14.1","am",10,"30 Double-Unders · 15 Power Snatches 75/55 (Wdh. 11.1)"],
- ["14.2","em",180,10,"Alle 3 Min je 2 Runden: Overhead Squats 95/65 + Chest-to-Bar. Erst 10er, dann 12er, 14er … bis eine Runde nicht geschafft ist"],
- ["14.3","am",8,"Deadlift-Leiter 10-15-20-25-30-35 Reps (135→365 / 95→225), dazwischen je 15 Box Jumps 24/20\""],
- ["14.4","am",14,"60 Cal Row · 50 Toes-to-Bar · 40 Wall Balls 20/14 · 30 Cleans 135/95 · 20 Muscle-ups"],
- ["14.5","ft",0,"21-18-15-12-9-6-3: Thrusters 95/65 · Bar-facing Burpees"],
- ["15.1","am",9,"15 Toes-to-Bar · 10 Deadlifts 115/75 · 5 Snatches 115/75"],
+ ["11.1","am",10,"30 Double-Unders · 15 Power Snatches {w:75/55}"],
+ ["11.2","am",15,"9 Deadlifts {w:155/100} · 12 Push-ups · 15 Box Jumps {in:24}"],
+ ["11.3","am",5,"Squat Clean & Jerk {w:165/110}, so viele Reps wie möglich"],
+ ["11.4","am",10,"60 Bar-facing Burpees · 30 Overhead Squats {w:120/90} · 10 Ring Muscle-ups"],
+ ["11.5","am",20,"5 Power Cleans {w:145/100} · 10 Toes-to-Bar · 15 Wall Balls {w:20/14}"],
+ ["11.6","am",7,"Leiter 3-6-9-12…: Thrusters {w:100/65} + Chest-to-Bar Pull-ups"],
+ ["12.1","am",7,"Burpees (Ziel {in:6} über Reichhöhe)"],
+ ["12.2","am",10,"Snatch-Leiter: 30 @{w:75/45} · 30 @{w:135/75} · 30 @{w:165/100} · max @{w:210/120}"],
+ ["12.3","am",18,"15 Box Jumps {in:24/20} · 12 Push Press {w:115/75} · 9 Toes-to-Bar"],
+ ["12.4","am",12,"150 Wall Balls {w:20/14} · 90 Double-Unders · 30 Muscle-ups"],
+ ["12.5","am",7,"Leiter 3-6-9…: Thrusters {w:100/65} + Chest-to-Bar Pull-ups"],
+ ["13.1","am",17,"40 Burpees · 30 Snatches {w:75/45} · 30 Burpees · 30 Snatches {w:135/75} · 20 Burpees · 30 Snatches {w:165/100} · 10 Burpees · max Snatches {w:210/120}"],
+ ["13.2","am",10,"5 Shoulder-to-Overhead {w:115/75} · 10 Deadlifts {w:115/75} · 15 Box Jumps {in:24/20}"],
+ ["13.3","am",12,"150 Wall Balls {w:20/14} · 90 Double-Unders · 30 Muscle-ups (Wdh. 12.4)"],
+ ["13.4","am",7,"Leiter 3-3, 6-6, 9-9…: Clean & Jerks {w:135/95} + Toes-to-Bar"],
+ ["13.5","ft",20,"15 Thrusters {w:100/65} · 15 Chest-to-Bar im Wechsel. Start mit 4 Min; je 90 Reps +4 Min",[4,8,12,16]],
+ ["14.1","am",10,"30 Double-Unders · 15 Power Snatches {w:75/55} (Wdh. 11.1)"],
+ ["14.2","em",180,10,"Alle 3 Min je 2 Runden: Overhead Squats {w:95/65} + Chest-to-Bar. Erst 10er, dann 12er, 14er … bis eine Runde nicht geschafft ist"],
+ ["14.3","am",8,"Deadlift-Leiter 10-15-20-25-30-35 Reps ({w:135→365 / 95→225}), dazwischen je 15 Box Jumps {in:24/20}"],
+ ["14.4","am",14,"60 Cal Row · 50 Toes-to-Bar · 40 Wall Balls {w:20/14} · 30 Cleans {w:135/95} · 20 Muscle-ups"],
+ ["14.5","ft",0,"21-18-15-12-9-6-3: Thrusters {w:95/65} · Bar-facing Burpees"],
+ ["15.1","am",9,"15 Toes-to-Bar · 10 Deadlifts {w:115/75} · 5 Snatches {w:115/75}"],
  ["15.1a","am",6,"Clean & Jerk 1RM, direkt im Anschluss an 15.1"],
- ["15.2","em",180,10,"Wdh. 14.2: alle 3 Min 2 Runden Overhead Squats 95/65 + Chest-to-Bar, 10er → 12er → 14er …"],
- ["15.3","am",14,"7 Muscle-ups · 50 Wall Balls 20/14 · 100 Double-Unders"],
- ["15.4","am",8,"Leiter: 3 HSPU + 3 Cleans 185/125, 6+3, 9+6, 12+6, 15+9, 18+9 …"],
- ["15.5","ft",0,"27-21-15-9: Cal Row · Thrusters 95/65"],
- ["16.1","am",20,"25 ft OH Walking Lunge 95/65 · 8 Bar-facing Burpees · 25 ft OH Lunge · 8 Chest-to-Bar"],
- ["16.2","em",240,5,"Alle 4 Min: 25 Toes-to-Bar · 50 Double-Unders · Squat Cleans 15 @135/85, dann 13 @185/115, 11 @225/145, 9 @275/175, 7 @315/205"],
- ["16.3","am",7,"10 Power Snatches 75/55 · 3 Bar Muscle-ups"],
- ["16.4","am",13,"55 Deadlifts 225/155 · 55 Wall Balls 20/14 · 55 Cal Row · 55 HSPU"],
- ["16.5","ft",0,"21-18-15-12-9-6-3: Thrusters 95/65 · Bar-facing Burpees (Wdh. 14.5)"],
- ["17.1","ft",20,"DB Snatches 10-20-30-40-50 (50/35), nach jedem Satz 15 Burpee Box Jump-overs 24/20\""],
- ["17.2","em",240,3,"Alle 4 Min 2 Runden: 50 ft DB Walking Lunge · 16 Toes-to-Bar · 8 DB Power Cleans 50/35; ab dem 2. Block Bar Muscle-ups statt T2B"],
- ["17.3","ft",24,"Chest-to-Bar + Squat Snatches: 6+6 @95/65, 7+5 @135/95, 8+4 @185/135, 9+3 @225/155, 10+2 @245/175, 11+1 @265/185. Start Cap 8 Min, +4 je Stufe",[8,12,16,20]],
- ["17.4","am",13,"55 Deadlifts 225/155 · 55 Wall Balls · 55 Cal Row · 55 HSPU (Wdh. 16.4)"],
- ["17.5","ft",40,"10 Runden: 9 Thrusters 95/65 · 35 Double-Unders"],
- ["18.1","am",20,"8 Toes-to-Bar · 10 DB Hang Clean & Jerks 50/35 · 14/12 Cal Row"],
- ["18.2","ft",12,"1-2-3 … 10: DB Squats 50/35 + Bar-facing Burpees; Restzeit 18.2a Clean 1RM"],
- ["18.3","ft",14,"2 Runden: 100 DU · 20 OHS 115/80 · 100 DU · 12 Ring Muscle-ups · 100 DU · 20 DB Snatches 50/35 · 100 DU · 12 Bar Muscle-ups"],
- ["18.4","ft",9,"21-15-9 Deadlifts 225/155 + HSPU, dann 21-15-9 Deadlifts 315/205 + 50 ft Handstand Walk"],
- ["18.5","am",7,"Leiter 3-6-9…: Thrusters 100/65 + Chest-to-Bar (Wdh. 11.6)"],
- ["19.1","am",15,"19 Wall Balls 20/14 · 19 Cal Row"],
- ["19.2","ft",20,"25 T2B · 50 DU · 15 Squat Cleans 135/85 · 25 T2B · 50 DU · 13 @185/115; je +4 Min: 11 @225/145, 9 @275/175, 7 @315/205",[8,12,16]],
- ["19.3","ft",10,"200 ft DB OH Lunge 50/35 · 50 DB Box Step-ups 24/20\" · 50 Strict HSPU · 200 ft Handstand Walk"],
- ["19.4","ft",12,"3 Runden: 10 Snatches 95/65 · 12 Bar-facing Burpees; 3 Min Pause; 3 Runden: 10 Bar Muscle-ups · 12 Bar-facing Burpees",[],[["9:00","Pause"],["12:00","Bar MU Teil"]]],
- ["19.5","ft",20,"33-27-21-15-9: Thrusters 95/65 · Chest-to-Bar"],
- ["20.1","ft",15,"10 Runden: 8 Ground-to-Overhead 95/65 · 10 Bar-facing Burpees"],
- ["20.2","am",20,"4 DB Thrusters 50/35 · 6 Toes-to-Bar · 24 Double-Unders"],
- ["20.3","ft",9,"21-15-9 Deadlifts 225/155 + HSPU, dann 21-15-9 Deadlifts 315/205 + 50 ft Handstand Walk (Wdh. 18.4)"],
- ["20.4","ft",20,"30 Box Jumps · 15 C&J 95/65 · 30 Box Jumps · 15 C&J 135/85 · 30 Single-leg Squats · 15 C&J 185/115 · 30 Pistols · 15 C&J 225/145"],
- ["20.5","ft",20,"Partitioniert: 40 Ring Muscle-ups · 80 Cal Row · 120 Wall Balls 20/14"],
+ ["15.2","em",180,10,"Wdh. 14.2: alle 3 Min 2 Runden Overhead Squats {w:95/65} + Chest-to-Bar, 10er → 12er → 14er …"],
+ ["15.3","am",14,"7 Muscle-ups · 50 Wall Balls {w:20/14} · 100 Double-Unders"],
+ ["15.4","am",8,"Leiter: 3 HSPU + 3 Cleans {w:185/125}, 6+3, 9+6, 12+6, 15+9, 18+9 …"],
+ ["15.5","ft",0,"27-21-15-9: Cal Row · Thrusters {w:95/65}"],
+ ["16.1","am",20,"{ft:25} OH Walking Lunge {w:95/65} · 8 Bar-facing Burpees · {ft:25} OH Lunge · 8 Chest-to-Bar"],
+ ["16.2","em",240,5,"Alle 4 Min: 25 Toes-to-Bar · 50 Double-Unders · Squat Cleans 15 @{w:135/85}, dann 13 @{w:185/115}, 11 @{w:225/145}, 9 @{w:275/175}, 7 @{w:315/205}"],
+ ["16.3","am",7,"10 Power Snatches {w:75/55} · 3 Bar Muscle-ups"],
+ ["16.4","am",13,"55 Deadlifts {w:225/155} · 55 Wall Balls {w:20/14} · 55 Cal Row · 55 HSPU"],
+ ["16.5","ft",0,"21-18-15-12-9-6-3: Thrusters {w:95/65} · Bar-facing Burpees (Wdh. 14.5)"],
+ ["17.1","ft",20,"DB Snatches 10-20-30-40-50 ({w:50/35}), nach jedem Satz 15 Burpee Box Jump-overs {in:24/20}"],
+ ["17.2","em",240,3,"Alle 4 Min 2 Runden: {ft:50} DB Walking Lunge · 16 Toes-to-Bar · 8 DB Power Cleans {w:50/35}; ab dem 2. Block Bar Muscle-ups statt T2B"],
+ ["17.3","ft",24,"Chest-to-Bar + Squat Snatches: 6+6 @{w:95/65}, 7+5 @{w:135/95}, 8+4 @{w:185/135}, 9+3 @{w:225/155}, 10+2 @{w:245/175}, 11+1 @{w:265/185}. Start Cap 8 Min, +4 je Stufe",[8,12,16,20]],
+ ["17.4","am",13,"55 Deadlifts {w:225/155} · 55 Wall Balls · 55 Cal Row · 55 HSPU (Wdh. 16.4)"],
+ ["17.5","ft",40,"10 Runden: 9 Thrusters {w:95/65} · 35 Double-Unders"],
+ ["18.1","am",20,"8 Toes-to-Bar · 10 DB Hang Clean & Jerks {w:50/35} · 14/12 Cal Row"],
+ ["18.2","ft",12,"1-2-3 … 10: DB Squats {w:50/35} + Bar-facing Burpees; Restzeit 18.2a Clean 1RM"],
+ ["18.3","ft",14,"2 Runden: 100 DU · 20 OHS {w:115/80} · 100 DU · 12 Ring Muscle-ups · 100 DU · 20 DB Snatches {w:50/35} · 100 DU · 12 Bar Muscle-ups"],
+ ["18.4","ft",9,"21-15-9 Deadlifts {w:225/155} + HSPU, dann 21-15-9 Deadlifts {w:315/205} + {ft:50} Handstand Walk"],
+ ["18.5","am",7,"Leiter 3-6-9…: Thrusters {w:100/65} + Chest-to-Bar (Wdh. 11.6)"],
+ ["19.1","am",15,"19 Wall Balls {w:20/14} · 19 Cal Row"],
+ ["19.2","ft",20,"25 T2B · 50 DU · 15 Squat Cleans {w:135/85} · 25 T2B · 50 DU · 13 @{w:185/115}; je +4 Min: 11 @{w:225/145}, 9 @{w:275/175}, 7 @{w:315/205}",[8,12,16]],
+ ["19.3","ft",10,"{ft:200} DB OH Lunge {w:50/35} · 50 DB Box Step-ups {in:24/20} · 50 Strict HSPU · {ft:200} Handstand Walk"],
+ ["19.4","ft",12,"3 Runden: 10 Snatches {w:95/65} · 12 Bar-facing Burpees; 3 Min Pause; 3 Runden: 10 Bar Muscle-ups · 12 Bar-facing Burpees",[],[["9:00","Pause"],["12:00","Bar MU Teil"]]],
+ ["19.5","ft",20,"33-27-21-15-9: Thrusters {w:95/65} · Chest-to-Bar"],
+ ["20.1","ft",15,"10 Runden: 8 Ground-to-Overhead {w:95/65} · 10 Bar-facing Burpees"],
+ ["20.2","am",20,"4 DB Thrusters {w:50/35} · 6 Toes-to-Bar · 24 Double-Unders"],
+ ["20.3","ft",9,"21-15-9 Deadlifts {w:225/155} + HSPU, dann 21-15-9 Deadlifts {w:315/205} + {ft:50} Handstand Walk (Wdh. 18.4)"],
+ ["20.4","ft",20,"30 Box Jumps · 15 C&J {w:95/65} · 30 Box Jumps · 15 C&J {w:135/85} · 30 Single-leg Squats · 15 C&J {w:185/115} · 30 Pistols · 15 C&J {w:225/145}"],
+ ["20.5","ft",20,"Partitioniert: 40 Ring Muscle-ups · 80 Cal Row · 120 Wall Balls {w:20/14}"],
  ["21.1","ft",15,"Wall Walks und Double-Unders: 1/10, 3/30, 6/60, 9/90, 15/150, 21/210"],
- ["21.2","ft",20,"DB Snatches 10-20-30-40-50 (50/35), nach jedem Satz 15 Burpee Step-overs"],
- ["21.3","ft",15,"15 Front Squats · 30 T2B · 15 Thrusters; 1 Min Pause; 15 FS · 30 C2B · 15 Thrusters; 1 Min Pause; 15 FS · 30 Bar MU · 15 Thrusters (95/65)"],
+ ["21.2","ft",20,"DB Snatches 10-20-30-40-50 ({w:50/35}), nach jedem Satz 15 Burpee Step-overs"],
+ ["21.3","ft",15,"15 Front Squats · 30 T2B · 15 Thrusters; 1 Min Pause; 15 FS · 30 C2B · 15 Thrusters; 1 Min Pause; 15 FS · 30 Bar MU · 15 Thrusters ({w:95/65})"],
  ["21.4","am",7,"Komplex 1RM: Deadlift, Clean, Hang Clean, Jerk – direkt nach 21.3"],
- ["22.1","am",15,"3 Wall Walks · 12 DB Snatches 50/35 · 15 Box Jump-overs 20\""],
- ["22.2","ft",10,"1-2-3 … 10 … 3-2-1: Deadlifts 225/155 + Bar-facing Burpees"],
- ["22.3","ft",12,"21 Pull-ups · 42 DU · 21 Thrusters 95/65 · 18 C2B · 36 DU · 18 Thrusters 115/75 · 15 Bar MU · 30 DU · 15 Thrusters 135/85"],
- ["23.1","am",14,"60 Cal Row · 50 T2B · 40 Wall Balls · 30 Cleans 135/85 · 20 Muscle-ups (Wdh. 14.4)"],
+ ["22.1","am",15,"3 Wall Walks · 12 DB Snatches {w:50/35} · 15 Box Jump-overs {in:20}"],
+ ["22.2","ft",10,"1-2-3 … 10 … 3-2-1: Deadlifts {w:225/155} + Bar-facing Burpees"],
+ ["22.3","ft",12,"21 Pull-ups · 42 DU · 21 Thrusters {w:95/65} · 18 C2B · 36 DU · 18 Thrusters {w:115/75} · 15 Bar MU · 30 DU · 15 Thrusters {w:135/85}"],
+ ["23.1","am",14,"60 Cal Row · 50 T2B · 40 Wall Balls · 30 Cleans {w:135/85} · 20 Muscle-ups (Wdh. 14.4)"],
  ["23.2A","am",15,"Burpee Pull-ups und Shuttle Runs: 5 + 10 Shuttles, je Runde +5 Burpee Pull-ups"],
  ["23.2B","am",5,"Thruster 1RM, direkt im Anschluss an 23.2A"],
- ["23.3","ft",9,"5 Wall Walks · 50 DU · 15 Snatches 95/65 · 5 WW · 50 DU · 12 Snatches 135/95; bei Abschluss +3 Min: 20 Strict HSPU · 50 DU · 9 @185/125 · 20 HSPU · 50 DU · 6 @225/155",[6]],
- ["24.1","ft",15,"21-15-9: DB Snatches Arm 1 · Lateral Burpees über DB · DB Snatches Arm 2 · Lateral Burpees (50/35)"],
- ["24.2","am",20,"300 m Row · 10 Deadlifts 185/125 · 50 Double-Unders"],
- ["24.3","ft",15,"5 Runden: 10 Thrusters 95/65 · 10 C2B; 1 Min Pause; 5 Runden: 7 Thrusters 135/95 · 7 Bar Muscle-ups"],
- ["25.1","am",15,"3 Lateral Burpees über DB · 3 DB Hang Clean-to-Overhead 50/35 · 30 ft Walking Lunge; je Runde +3 Reps"],
- ["25.2","ft",12,"21 Pull-ups · 42 DU · 21 Thrusters 95/65 · 18 C2B · 36 DU · 18 Thrusters 115/75 · 15 Bar MU · 30 DU · 15 Thrusters 135/85 (Wdh. 22.3)"],
- ["25.3","ft",20,"5 Wall Walks · 50 Cal Row · 5 WW · 25 Deadlifts 225/155 · 5 WW · 25 Cleans 135/85 · 5 WW · 25 Snatches 95/65 · 5 WW · 50 Cal Row"],
- ["26.1","ft",12,"Wall Balls 20-30-40-66-40-30-20 (20/14 lb), dazwischen je 18 Box Jump-overs 24/20\" bzw. Med-Ball Box Step-overs"],
- ["26.2","ft",15,"3 Runden: 80 ft DB OH Walking Lunge · 20 DB Snatches (50/35) · 20 Pull-ups → 20 C2B → 20 Ring Muscle-ups"],
- ["26.3","ft",16,"3 Gewichtsstufen à 2 Runden: 12 Burpees over Bar · 12 Cleans · 12 Burpees over Bar · 12 Thrusters (95/115/135 · 65/75/85)"],
-].map(r=>{
+ ["23.3","ft",9,"5 Wall Walks · 50 DU · 15 Snatches {w:95/65} · 5 WW · 50 DU · 12 Snatches {w:135/95}; bei Abschluss +3 Min: 20 Strict HSPU · 50 DU · 9 @{w:185/125} · 20 HSPU · 50 DU · 6 @{w:225/155}",[6]],
+ ["24.1","ft",15,"21-15-9: DB Snatches Arm 1 · Lateral Burpees über DB · DB Snatches Arm 2 · Lateral Burpees ({w:50/35})"],
+ ["24.2","am",20,"300 m Row · 10 Deadlifts {w:185/125} · 50 Double-Unders"],
+ ["24.3","ft",15,"5 Runden: 10 Thrusters {w:95/65} · 10 C2B; 1 Min Pause; 5 Runden: 7 Thrusters {w:135/95} · 7 Bar Muscle-ups"],
+ ["25.1","am",15,"3 Lateral Burpees über DB · 3 DB Hang Clean-to-Overhead {w:50/35} · {ft:30} Walking Lunge; je Runde +3 Reps"],
+ ["25.2","ft",12,"21 Pull-ups · 42 DU · 21 Thrusters {w:95/65} · 18 C2B · 36 DU · 18 Thrusters {w:115/75} · 15 Bar MU · 30 DU · 15 Thrusters {w:135/85} (Wdh. 22.3)"],
+ ["25.3","ft",20,"5 Wall Walks · 50 Cal Row · 5 WW · 25 Deadlifts {w:225/155} · 5 WW · 25 Cleans {w:135/85} · 5 WW · 25 Snatches {w:95/65} · 5 WW · 50 Cal Row"],
+ ["26.1","ft",12,"Wall Balls 20-30-40-66-40-30-20 ({w:20/14}), dazwischen je 18 Box Jump-overs {in:24/20} bzw. Med-Ball Box Step-overs"],
+ ["26.2","ft",15,"3 Runden: {ft:80} DB OH Walking Lunge · 20 DB Snatches ({w:50/35}) · 20 Pull-ups → 20 C2B → 20 Ring Muscle-ups"],
+ ["26.3","ft",16,"3 Gewichtsstufen à 2 Runden: 12 Burpees over Bar · 12 Cleans · 12 Burpees over Bar · 12 Thrusters ({w:95/115/135 · 65/75/85})"],].map(r=>{
   const [id,m]=r;
   if(m==="em") return {id,y:2000+parseInt(id),m,interval:r[2],rounds:r[3],desc:r[4]};
   return {id,y:2000+parseInt(id),m,min:r[2],desc:r[3],marks:r[4]||[]};
@@ -335,21 +338,36 @@ const W = [
 W.forEach(w=>w.name="Open "+w.id);
 // rx: [Männer, Frauen] oder null = Körpergewicht
 const BENCH=[
- ["Fran","ft",0,"21-15-9: Thrusters · Pull-ups",["43 kg (95 lb)","29 kg (65 lb)"]],
+ ["Fran","ft",0,"21-15-9: Thrusters · Pull-ups",["{w:95}","{w:65}"]],
  ["Cindy","am",20,"5 Pull-ups · 10 Push-ups · 15 Air Squats",null],
- ["Grace","ft",0,"30 Clean & Jerks",["61 kg (135 lb)","43 kg (95 lb)"]],
- ["Helen","ft",0,"3 Runden: 400 m Run · 21 Kettlebell Swings · 12 Pull-ups",["24 kg (53 lb)","16 kg (35 lb)"]],
+ ["Grace","ft",0,"30 Clean & Jerks",["{w:135}","{w:95}"]],
+ ["Helen","ft",0,"3 Runden: 400 m Run · 21 Kettlebell Swings · 12 Pull-ups",["KB {kb:53}","KB {kb:35}"]],
  ["Annie","ft",0,"50-40-30-20-10: Double-Unders · Sit-ups",null],
- ["Diane","ft",0,"21-15-9: Deadlifts · Handstand Push-ups",["102 kg (225 lb)","70 kg (155 lb)"]],
- ["Elizabeth","ft",0,"21-15-9: Cleans · Ring Dips",["61 kg (135 lb)","43 kg (95 lb)"]],
- ["Karen","ft",0,"150 Wall Balls",["9 kg (20 lb) auf 3 m (10 ft)","6 kg (14 lb) auf 2,7 m (9 ft)"]],
- ["Jackie","ft",0,"1000 m Row · 50 Thrusters · 30 Pull-ups",["20 kg (45 lb)","15 kg (35 lb)"]],
- ["Nancy","ft",0,"5 Runden: 400 m Run · 15 Overhead Squats",["43 kg (95 lb)","29 kg (65 lb)"]],
+ ["Diane","ft",0,"21-15-9: Deadlifts · Handstand Push-ups",["{w:225}","{w:155}"]],
+ ["Elizabeth","ft",0,"21-15-9: Cleans · Ring Dips",["{w:135}","{w:95}"]],
+ ["Karen","ft",0,"150 Wall Balls",["{w:20} auf {ft:10}","{w:14} auf {ft:9}"]],
+ ["Jackie","ft",0,"1000 m Row · 50 Thrusters · 30 Pull-ups",["{w:45}","{w:35}"]],
+ ["Nancy","ft",0,"5 Runden: 400 m Run · 15 Overhead Squats",["{w:95}","{w:65}"]],
 ].map(([id,m,min,desc,rx])=>({id,name:id,m,min,desc,rx:rx||"bw",marks:[]}));
 function rxHtml(w){
   if(!w.rx)return "";
   if(w.rx==="bw")return `<p class="rx"><span>Rx</span> Körpergewicht, gleich für Männer und Frauen</p>`;
-  return `<p class="rx"><span>Rx</span> <em><b>Männer</b> ${w.rx[0]}</em> <em><b>Frauen</b> ${w.rx[1]}</em></p>`;
+  return `<p class="rx"><span>Rx</span> <em><b>Männer</b> ${U(w.rx[0])}</em> <em><b>Frauen</b> ${U(w.rx[1])}</em></p>`;
+}
+/* Einheiten: Daten sind in lb / Zoll / Fuß hinterlegt und werden bei Bedarf in die offiziellen kg-Äquivalente umgerechnet */
+const KG={14:6,20:9,35:15,45:20,50:22.5,55:25,65:29,75:34,80:36,85:38,90:41,95:43,100:45,110:50,115:52,120:54,125:56,135:61,145:66,155:70,165:75,175:79,185:84,205:93,210:95,225:102,245:111,265:120,275:124,315:143,365:165};
+const KB={53:24,35:16};
+const CM={6:15,20:50,24:60};
+const M={9:2.7,10:3,25:7.5,30:9,50:15,80:24,200:61};
+const dec=x=>String(x).replace(".",",");
+function U(str){
+  const kg=cfg.unit!=="lb";
+  return str.replace(/\{(w|kb|in|ft):([^}]+)\}/g,(_,t,v)=>{
+    if(!kg)return t==="in"?v+"″":t==="ft"?v+" ft":v+" lb";
+    const map=t==="w"?KG:t==="kb"?KB:t==="in"?CM:M;
+    const conv=n=>map[n]!==undefined?map[n]:(t==="in"?Math.round(n*2.54):t==="ft"?Math.round(n*0.3048*10)/10:Math.round(n*0.45359237));
+    return v.replace(/\d+/g,n=>dec(conv(+n)))+(t==="in"?" cm":t==="ft"?" m":" kg");
+  });
 }
 
 /* ===================== seven segment ===================== */
@@ -395,7 +413,7 @@ const MODES=[
  {k:"tb",t:"Tabata",s:"20/10 × 8"},
  {k:"iv",t:"Intervall",s:"Work/Rest"},
 ];
-const DEF={mode:"ft",cap:1200,amrap:720,emInt:60,emRounds:10,tbWork:20,tbRest:10,tbRounds:8,ivWork:60,ivRest:30,ivRounds:5,prep:true,sound:true,hund:false};
+const DEF={mode:"ft",cap:1200,amrap:720,emInt:60,emRounds:10,tbWork:20,tbRest:10,tbRounds:8,ivWork:60,ivRest:30,ivRounds:5,prep:true,sound:true,hund:false,unit:"kg"};
 let cfg={...DEF};
 let preset=null; // loaded open workout
 try{const s=JSON.parse(localStorage.getItem("boxclock")||"null");if(s)cfg={...DEF,...s}}catch(e){}
@@ -678,7 +696,7 @@ function renderLoaded(){
   const box=$("loaded");
   if(!preset){box.hidden=true;$("wodname").textContent=MODES.find(x=>x.k===cfg.mode).t;return}
   box.hidden=false;
-  box.innerHTML=`<h3>${preset.name} <span class="badge ${preset.m}">${badge(preset)}</span><button class="x" type="button" id="unload">Entfernen</button></h3><p>${preset.desc}</p>${rxHtml(preset)}${preset.marks&&preset.marks.length?`<small>Checkpoint-Signal bei ${preset.marks.map(x=>x+":00").join(", ")}</small>`:""}`;
+  box.innerHTML=`<h3>${preset.name} <span class="badge ${preset.m}">${badge(preset)}</span><button class="x" type="button" id="unload">Entfernen</button></h3><p>${U(preset.desc)}</p>${rxHtml(preset)}${preset.marks&&preset.marks.length?`<small>Checkpoint-Signal bei ${preset.marks.map(x=>x+":00").join(", ")}</small>`:""}`;
   $("unload").onclick=()=>{preset=null;renderAll();reset();renderWods();renderBench()};
   $("wodname").textContent=preset.name;
 }
@@ -697,6 +715,8 @@ function loadPreset(w){
   window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
 }
 function renderAll(){renderModes();renderFields();renderLoaded()}
+function setUnit(u){cfg.unit=u;save();$("uKg").setAttribute("aria-pressed",u!=="lb");$("uLb").setAttribute("aria-pressed",u==="lb");renderLoaded();if(typeof renderWods==="function"){renderWods();renderBench()}}
+$("uKg").onclick=()=>setUnit("kg");$("uLb").onclick=()=>setUnit("lb");
 
 /* ===================== open archive UI ===================== */
 const YEARS=[...new Set(W.map(w=>w.y))].sort((a,b)=>b-a);
@@ -707,13 +727,13 @@ function renderYears(){
 }
 function renderWods(){
   const q=$("q").value.trim().toLowerCase();
-  const list=W.filter(w=>(q?true:(yearSel==="Alle"||w.y===yearSel))&&(!q||(w.id+" "+w.desc).toLowerCase().includes(q)));
+  const list=W.filter(w=>(q?true:(yearSel==="Alle"||w.y===yearSel))&&(!q||(w.id+" "+U(w.desc)).toLowerCase().includes(q)));
   const box=$("wods");box.innerHTML="";
   if(!list.length){box.innerHTML=`<p class="empty">Kein Workout gefunden. Probier eine Bewegung wie „Snatch“ oder eine Nummer wie „19.5“.</p>`;return}
   list.sort((a,b)=>b.y-a.y||a.id.localeCompare(b.id,undefined,{numeric:true}));
   list.forEach(w=>{
     const b=document.createElement("button");b.type="button";b.className="wod"+(preset===w?" active":"");
-    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${w.desc}</p>${rxHtml(w)}<small>Tippen zum Laden</small>`;
+    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${U(w.desc)}</p>${rxHtml(w)}<small>Tippen zum Laden</small>`;
     b.onclick=()=>loadPreset(w);box.appendChild(b);
   });
 }
@@ -722,7 +742,7 @@ function renderBench(){
   const box=$("bench");box.innerHTML="";
   BENCH.forEach(w=>{
     const b=document.createElement("button");b.type="button";b.className="wod"+(preset===w?" active":"");
-    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${w.desc}</p>${rxHtml(w)}<small>Tippen zum Laden</small>`;
+    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${U(w.desc)}</p>${rxHtml(w)}<small>Tippen zum Laden</small>`;
     b.onclick=()=>loadPreset(w);box.appendChild(b);
   });
 }
@@ -733,7 +753,7 @@ function selTab(i){TABS.forEach(([t,p],j)=>{$(t).setAttribute("aria-selected",i=
 TABS.forEach(([t],i)=>$(t).onclick=()=>selTab(i));
 
 /* boot */
-renderAll();renderYears();renderWods();renderBench();reset();
+renderAll();renderYears();setUnit(cfg.unit);reset();
 </script>
 
 </body>
