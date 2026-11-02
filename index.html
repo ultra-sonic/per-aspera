@@ -715,7 +715,10 @@ function loadPreset(w){
   window.scrollTo({top:0,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
 }
 function renderAll(){renderModes();renderFields();renderLoaded()}
-function setUnit(u){cfg.unit=u;save();$("uKg").setAttribute("aria-pressed",u!=="lb");$("uLb").setAttribute("aria-pressed",u==="lb");renderLoaded();if(typeof renderWods==="function"){renderWods();renderBench()}}
+function getCookie(n){try{const m=document.cookie.match(new RegExp("(?:^|; )"+n+"=([^;]*)"));return m?decodeURIComponent(m[1]):null}catch(e){return null}}
+function setCookie(n,v){try{document.cookie=n+"="+encodeURIComponent(v)+"; max-age=31536000; path=/; SameSite=Lax"+(location.protocol==="https:"?"; Secure":"")}catch(e){}}
+{const c=getCookie("wod_unit");if(c==="kg"||c==="lb")cfg.unit=c}
+function setUnit(u){cfg.unit=u;save();setCookie("wod_unit",u);$("uKg").setAttribute("aria-pressed",u!=="lb");$("uLb").setAttribute("aria-pressed",u==="lb");renderLoaded();if(typeof renderWods==="function"){renderWods();renderBench()}}
 $("uKg").onclick=()=>setUnit("kg");$("uLb").onclick=()=>setUnit("lb");
 
 /* ===================== open archive UI ===================== */
