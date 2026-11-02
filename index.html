@@ -167,6 +167,10 @@ h2.lbl{margin:0;font-family:var(--f-display);font-size:13px;letter-spacing:.12em
 .badge.em{color:var(--led-rest)}
 .wod p{margin:0;font-size:14px;color:var(--chalk)}
 .wod small{color:var(--dust);font-size:12px}
+.rx{margin:0;font-size:13px;color:var(--chalk);line-height:1.4}
+.rx span{font-family:var(--f-display);font-weight:700;font-size:11px;letter-spacing:.08em;color:var(--led);border:1px solid color-mix(in srgb,var(--led) 40%,var(--line));border-radius:4px;padding:0 5px;margin-right:4px}
+.rx b{font-weight:600;color:var(--dust)}
+.rx em{font-style:normal;display:inline-block;margin-right:12px}
 .empty{color:var(--dust)}
 footer{color:var(--dust);font-size:12px}
 
@@ -334,18 +338,24 @@ const W = [
   return {id,y:2000+parseInt(id),m,min:r[2],desc:r[3],marks:r[4]||[]};
 });
 W.forEach(w=>w.name="Open "+w.id);
+// rx: [Männer, Frauen] oder null = Körpergewicht
 const BENCH=[
- ["Fran","ft",0,"21-15-9: Thrusters 95/65 · Pull-ups"],
- ["Cindy","am",20,"5 Pull-ups · 10 Push-ups · 15 Air Squats"],
- ["Grace","ft",0,"30 Clean & Jerks 135/95"],
- ["Helen","ft",0,"3 Runden: 400 m Run · 21 KB Swings 53/35 (24/16 kg) · 12 Pull-ups"],
- ["Annie","ft",0,"50-40-30-20-10: Double-Unders · Sit-ups"],
- ["Diane","ft",0,"21-15-9: Deadlifts 225/155 · Handstand Push-ups"],
- ["Elizabeth","ft",0,"21-15-9: Cleans 135/95 · Ring Dips"],
- ["Karen","ft",0,"150 Wall Balls 20/14"],
- ["Jackie","ft",0,"1000 m Row · 50 Thrusters 45/35 · 30 Pull-ups"],
- ["Nancy","ft",0,"5 Runden: 400 m Run · 15 Overhead Squats 95/65"],
-].map(([id,m,min,desc])=>({id,name:id,m,min,desc,marks:[]}));
+ ["Fran","ft",0,"21-15-9: Thrusters · Pull-ups",["43 kg (95 lb)","29 kg (65 lb)"]],
+ ["Cindy","am",20,"5 Pull-ups · 10 Push-ups · 15 Air Squats",null],
+ ["Grace","ft",0,"30 Clean & Jerks",["61 kg (135 lb)","43 kg (95 lb)"]],
+ ["Helen","ft",0,"3 Runden: 400 m Run · 21 Kettlebell Swings · 12 Pull-ups",["24 kg (53 lb)","16 kg (35 lb)"]],
+ ["Annie","ft",0,"50-40-30-20-10: Double-Unders · Sit-ups",null],
+ ["Diane","ft",0,"21-15-9: Deadlifts · Handstand Push-ups",["102 kg (225 lb)","70 kg (155 lb)"]],
+ ["Elizabeth","ft",0,"21-15-9: Cleans · Ring Dips",["61 kg (135 lb)","43 kg (95 lb)"]],
+ ["Karen","ft",0,"150 Wall Balls",["9 kg (20 lb) auf 3 m (10 ft)","6 kg (14 lb) auf 2,7 m (9 ft)"]],
+ ["Jackie","ft",0,"1000 m Row · 50 Thrusters · 30 Pull-ups",["20 kg (45 lb)","15 kg (35 lb)"]],
+ ["Nancy","ft",0,"5 Runden: 400 m Run · 15 Overhead Squats",["43 kg (95 lb)","29 kg (65 lb)"]],
+].map(([id,m,min,desc,rx])=>({id,name:id,m,min,desc,rx:rx||"bw",marks:[]}));
+function rxHtml(w){
+  if(!w.rx)return "";
+  if(w.rx==="bw")return `<p class="rx"><span>Rx</span> Körpergewicht, gleich für Männer und Frauen</p>`;
+  return `<p class="rx"><span>Rx</span> <em><b>Männer</b> ${w.rx[0]}</em> <em><b>Frauen</b> ${w.rx[1]}</em></p>`;
+}
 
 /* ===================== seven segment ===================== */
 const SEG={a:"6.5,4 10.5,0 39.5,0 43.5,4 39.5,8 10.5,8",g:"6.5,50 10.5,46 39.5,46 43.5,50 39.5,54 10.5,54",d:"6.5,96 10.5,92 39.5,92 43.5,96 39.5,100 10.5,100",f:"4,6.5 8,10.5 8,43.5 4,47.5 0,43.5 0,10.5",e:"4,52.5 8,56.5 8,89.5 4,93.5 0,89.5 0,56.5",b:"46,6.5 50,10.5 50,43.5 46,47.5 42,43.5 42,10.5",c:"46,52.5 50,56.5 50,89.5 46,93.5 42,89.5 42,56.5"};
@@ -684,7 +694,7 @@ function renderLoaded(){
   const box=$("loaded");
   if(!preset){box.hidden=true;$("wodname").textContent=MODES.find(x=>x.k===cfg.mode).t;return}
   box.hidden=false;
-  box.innerHTML=`<h3>${preset.name} <span class="badge ${preset.m}">${badge(preset)}</span><button class="x" type="button" id="unload">Entfernen</button></h3><p>${preset.desc}</p>${preset.marks&&preset.marks.length?`<small>Checkpoint-Signal bei ${preset.marks.map(x=>x+":00").join(", ")}</small>`:""}`;
+  box.innerHTML=`<h3>${preset.name} <span class="badge ${preset.m}">${badge(preset)}</span><button class="x" type="button" id="unload">Entfernen</button></h3><p>${preset.desc}</p>${rxHtml(preset)}${preset.marks&&preset.marks.length?`<small>Checkpoint-Signal bei ${preset.marks.map(x=>x+":00").join(", ")}</small>`:""}`;
   $("unload").onclick=()=>{preset=null;renderAll();reset();renderWods();renderBench()};
   $("wodname").textContent=preset.name;
 }
@@ -719,7 +729,7 @@ function renderWods(){
   list.sort((a,b)=>b.y-a.y||a.id.localeCompare(b.id,undefined,{numeric:true}));
   list.forEach(w=>{
     const b=document.createElement("button");b.type="button";b.className="wod"+(preset===w?" active":"");
-    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${w.desc}</p><small>Tippen zum Laden</small>`;
+    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${w.desc}</p>${rxHtml(w)}<small>Tippen zum Laden</small>`;
     b.onclick=()=>loadPreset(w);box.appendChild(b);
   });
 }
@@ -728,7 +738,7 @@ function renderBench(){
   const box=$("bench");box.innerHTML="";
   BENCH.forEach(w=>{
     const b=document.createElement("button");b.type="button";b.className="wod"+(preset===w?" active":"");
-    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${w.desc}</p><small>Tippen zum Laden</small>`;
+    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${w.desc}</p>${rxHtml(w)}<small>Tippen zum Laden</small>`;
     b.onclick=()=>loadPreset(w);box.appendChild(b);
   });
 }
