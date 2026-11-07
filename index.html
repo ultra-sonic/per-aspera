@@ -220,7 +220,7 @@ footer{color:var(--dust);font-size:12px}
     <button class="tog" id="tHund" type="button" aria-pressed="false"><i></i>1/100 s</button>
     <div class="unit" role="group" aria-label="Gewichtseinheit"><button type="button" id="uKg" aria-pressed="true">kg</button><button type="button" id="uLb" aria-pressed="false">lb</button></div>
     <button class="tog" id="tFull" type="button" aria-pressed="false"><i></i>Vollbild</button>
-    <p class="keys" id="keys"><b>Fernbedienung</b> <span><kbd>⏯</kbd> Start / Pause</span> <span><kbd>OK</kbd> Runde</span> <span><kbd>⏩</kbd> oder <kbd>↩</kbd> Stopp</span> <span><kbd>⏪</kbd> Reset</span></p>
+    <p class="keys" id="keys" hidden><b>Fernbedienung</b> <span><kbd>⏯</kbd> Start / Pause</span> <span><kbd>OK</kbd> Runde</span> <span><kbd>⏩</kbd> oder <kbd>↩</kbd> Stopp</span> <span><kbd>⏪</kbd> Reset</span></p>
   </div>
 
   <div class="loaded" id="loaded" hidden></div>
@@ -615,6 +615,9 @@ $("bDone").onclick=()=>{if(state==="pause"){t0=performance.now();state="run"}fin
 // long-press-free "done" for For Time: double tap on clock
 clock.addEventListener("dblclick",()=>{if(cfg.mode==="ft"&&state==="run")finishForTime()});
 /* ---------- Tastatur + Fernbedienung (Fire TV / Android TV) ---------- */
+// Legende nur auf dem Fire TV zeigen: Silk-Browser oder Fire-TV-Gerätekennung (AFT…)
+const isFireTV=/\bSilk\b|\bAFT[A-Z0-9]/.test(navigator.userAgent||"");
+$("keys").hidden=!isFireTV;
 function doGo(){$("bGo").click()}
 function doStop(){if(state==="run"||state==="pause")$("bDone").click()}
 function doLap(){if(state==="run"&&!$("bLap").disabled)lap()}

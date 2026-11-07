@@ -69,7 +69,7 @@ You can show the timer on a Fire TV stick connected to the box display and run i
 | ⏩ **Fast-forward** or ↩ **Back** | Stop and keep the final time |
 | ⏪ **Rewind** | Reset |
 
-When the timer recognises a button press, it shows a short label at the top of the clock. If nothing appears when you press a button, Silk isn't passing that button to the page. In that case, open an issue and say which button it was.
+The remote legend under the timer appears only on a Fire TV (the page checks for Silk or a Fire TV device in the browser’s user agent). The buttons work in any browser. When the timer recognises a button press, it shows a short label at the top of the clock. If nothing appears when you press a button, Silk isn't passing that button to the page. In that case, open an issue and say which button it was.
 
 ## Keyboard
 
