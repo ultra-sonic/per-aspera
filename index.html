@@ -172,6 +172,13 @@ h2.lbl{margin:0;font-family:var(--f-display);font-size:13px;letter-spacing:.12em
 .rx em{font-style:normal;display:inline-block;margin-right:12px}
 .empty{color:var(--dust)}
 footer{color:var(--dust);font-size:12px}
+.sitefoot{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
+.sitefoot p{margin:0;color:var(--dust);font-size:12px;line-height:1.5;flex:1 1 260px;min-width:0}
+.sitefoot p a{color:var(--dust);text-decoration:underline;text-underline-offset:2px}
+.sitefoot p a:hover{color:var(--chalk)}
+.issue{order:2;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13px;color:var(--chalk);text-decoration:none;white-space:nowrap}
+.issue::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--led-prep)}
+.issue:hover{border-color:var(--dust)}
 
 @media (max-width:520px){
   .modes{grid-template-columns:repeat(3,1fr)}
@@ -253,6 +260,10 @@ footer{color:var(--dust);font-size:12px}
     <div class="wods" id="bench"></div>
     <footer>Die klassischen „Girls“. For-Time-Benchmarks laufen ohne Cap, „Stopp“ hält deine Zeit fest.</footer>
   </section>
+  <div class="sitefoot">
+    <a class="issue" href="https://github.com/ultra-sonic/per-aspera/issues/new" target="_blank" rel="noopener">Problem melden</a>
+    <p>© 2026 Oliver Markowski · <a href="https://github.com/ultra-sonic/per-aspera/blob/main/LICENSE" target="_blank" rel="noopener">MIT-Lizenz</a> · <a href="https://github.com/ultra-sonic/per-aspera" target="_blank" rel="noopener">Quellcode</a><br>Kein offizielles Produkt von CrossFit, LLC. CrossFit® und CrossFit Games® sind Marken von CrossFit, LLC.</p>
+  </div>
 </div>
 
 <script>
