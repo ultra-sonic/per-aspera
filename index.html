@@ -422,9 +422,9 @@ const save=()=>{try{localStorage.setItem("boxclock",JSON.stringify(cfg))}catch(e
 const FIELDS={
  ft:[["cap","Time Cap (0 = ohne)",60,0,5940]],
  am:[["amrap","Dauer",60,60,5940]],
- em:[["emInt","Alle",15,15,1200],["emRounds","Runden",1,1,99,"n"]],
+ em:[["emInt","Alle",5,5,1200],["emRounds","Runden",1,1,99,"n"]],
  tb:[["tbWork","Arbeit",5,5,600],["tbRest","Pause",5,0,600],["tbRounds","Runden",1,1,99,"n"]],
- iv:[["ivWork","Arbeit",15,5,3600],["ivRest","Pause",15,0,3600],["ivRounds","Runden",1,1,99,"n"]],
+ iv:[["ivWork","Arbeit",5,5,3600],["ivRest","Pause",5,0,3600],["ivRounds","Runden",1,1,99,"n"]],
 };
 
 function buildPlan(){
