@@ -45,7 +45,7 @@ It is one static `index.html` with no build step and no dependencies apart from 
 ### Presets
 
 - **CrossFit Open:** every Open workout from 11.1 to 26.3. You can filter by year or search by movement. Workouts whose time cap extends as you finish stages (13.5, 17.3, 19.2, 23.3) run as For Time and beep at each checkpoint.
-- **Rx / Scaled switch** on the Open tab: shows the official Scaled (16–54) version of each workout from 2015 on, including substituted movements and Scaled loads. Where no Scaled version is on file, the card says so. The Scaled division started in 2015.
+- **Rx / Scaled switch** on the Open tab: shows the official Scaled (16–54) version of each workout from 2015 on, including substituted movements and Scaled loads. Every workout from 2015 on has its Scaled version; for 2011–2014 the card notes that the Scaled division only started in 2015.
 - **Benchmarks:** Fran, Cindy, Grace, Helen, Annie, Diane, Elizabeth, Karen, Jackie and Nancy, with Rx loads.
 
 Rx loads are listed as men/women. A **kg / lb** switch next to the timer toggles all loads between kilograms (official CrossFit metric equivalents) and pounds. Box heights and distances switch along with it (cm/m or in/ft). Your choice is remembered. Check the official standards on [games.crossfit.com](https://games.crossfit.com) before you compete.
