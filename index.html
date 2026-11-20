@@ -108,6 +108,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--led-prep);outli
 .keys kbd{font:600 11px var(--f-body);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--chalk);background:var(--rail)}
 .clock{position:relative}
 .rtoast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--rail);border:1px solid var(--line);color:var(--chalk);font-family:var(--f-display);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:clamp(14px,2.2vw,22px);padding:6px 14px;border-radius:8px;z-index:5;pointer-events:none;white-space:nowrap}
+.divtog{display:flex;align-self:flex-start;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.divtog button{background:transparent;border:0;padding:8px 18px;font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--dust)}
+.divtog button[aria-pressed="true"]{background:var(--chalk);color:var(--floor)}
+.wod p.na,.loaded p.na{color:var(--dust);font-style:italic}
+.badge.sc{color:var(--chalk);background:transparent;border:1px solid var(--line)}
 .unit{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
 .unit button{background:transparent;border:0;padding:7px 13px;font-size:13px;color:var(--dust);font-variant-numeric:tabular-nums}
 .unit button[aria-pressed="true"]{background:var(--chalk);color:var(--floor);font-weight:600}
@@ -251,6 +256,7 @@ footer{color:var(--dust);font-size:12px}
 
   <section class="panel" id="pOpen" hidden>
     <div class="years" id="years"></div>
+    <div class="divtog" role="group" aria-label="Division"><button type="button" id="dRx" aria-pressed="true">Rx</button><button type="button" id="dSc" aria-pressed="false">Scaled</button></div>
     <input class="search" id="q" type="search" placeholder="Suchen: z. B. Thrusters, 16.5, Wall Balls" autocomplete="off">
     <div class="wods" id="wods"></div>
     <footer>Gewichte als Männer/Frauen, Einheit oben mit kg/lb umschalten. Wiederholte Workouts (z. B. 14.4 → 23.1) sind in jedem Jahr eigenständig gelistet. Workouts mit Zeitverlängerung laufen als For Time mit Checkpoint-Signal.</footer>
@@ -326,7 +332,7 @@ const W = [
  ["21.2","ft",20,"DB Snatches 10-20-30-40-50 ({w:50/35}), nach jedem Satz 15 Burpee Step-overs"],
  ["21.3","ft",15,"15 Front Squats · 30 T2B · 15 Thrusters; 1 Min Pause; 15 FS · 30 C2B · 15 Thrusters; 1 Min Pause; 15 FS · 30 Bar MU · 15 Thrusters ({w:95/65})"],
  ["21.4","am",7,"Komplex 1RM: Deadlift, Clean, Hang Clean, Jerk – direkt nach 21.3"],
- ["22.1","am",15,"3 Wall Walks · 12 DB Snatches {w:50/35} · 15 Box Jump-overs {in:20}"],
+ ["22.1","am",15,"3 Wall Walks · 12 DB Snatches {w:50/35} · 15 Box Jump-overs {in:24/20}"],
  ["22.2","ft",10,"1-2-3 … 10 … 3-2-1: Deadlifts {w:225/155} + Bar-facing Burpees"],
  ["22.3","ft",12,"21 Pull-ups · 42 DU · 21 Thrusters {w:95/65} · 18 C2B · 36 DU · 18 Thrusters {w:115/75} · 15 Bar MU · 30 DU · 15 Thrusters {w:135/85}"],
  ["23.1","am",14,"60 Cal Row · 50 T2B · 40 Wall Balls · 30 Cleans {w:135/85} · 20 Muscle-ups (Wdh. 14.4)"],
@@ -366,20 +372,75 @@ function rxHtml(w){
   return `<p class="rx"><span>Rx</span> <em><b>Männer</b> ${U(w.rx[0])}</em> <em><b>Frauen</b> ${U(w.rx[1])}</em></p>`;
 }
 /* Einheiten: Daten sind in lb / Zoll / Fuß hinterlegt und werden bei Bedarf in die offiziellen kg-Äquivalente umgerechnet */
-const KG={14:6,20:9,35:15,45:20,50:22.5,55:25,65:29,75:34,80:36,85:38,90:41,95:43,100:45,110:50,115:52,120:54,125:56,135:61,145:66,155:70,165:75,175:79,185:84,205:93,210:95,225:102,245:111,265:120,275:124,315:143,365:165};
+const KG={10:4,14:6,20:9,35:15,45:20,50:22.5,55:25,65:29,75:34,80:36,85:38,90:41,95:43,100:45,105:48,110:50,115:52,120:54,125:56,135:61,145:66,155:70,165:75,175:79,185:84,205:93,210:95,225:102,245:111,265:120,275:124,315:143,365:165};
 const KB={53:24,35:16};
+const DB={50:22.5,35:15,20:10,15:7,10:5};
 const CM={6:15,20:50,24:60};
 const M={9:2.7,10:3,25:7.5,30:9,50:15,80:24,200:61};
 const dec=x=>String(x).replace(".",",");
 function U(str){
   const kg=cfg.unit!=="lb";
-  return str.replace(/\{(w|kb|in|ft):([^}]+)\}/g,(_,t,v)=>{
+  return str.replace(/\{(w|kb|db|in|ft):([^}]+)\}/g,(_,t,v)=>{
     if(!kg)return t==="in"?v+"″":t==="ft"?v+" ft":v+" lb";
-    const map=t==="w"?KG:t==="kb"?KB:t==="in"?CM:M;
+    const map=t==="w"?KG:t==="kb"?KB:t==="db"?DB:t==="in"?CM:M;
     const conv=n=>map[n]!==undefined?map[n]:(t==="in"?Math.round(n*2.54):t==="ft"?Math.round(n*0.3048*10)/10:Math.round(n*0.45359237));
     return v.replace(/\d+/g,n=>dec(conv(+n)))+(t==="in"?" cm":t==="ft"?" m":" kg");
   });
 }
+
+/* Scaled-Versionen (16–54) nach den offiziellen Scorecards. Fehlt ein Eintrag, zeigt die Karte „nicht verfügbar“. */
+const SCALED={
+ "15.4":"AMRAP 8: 10 Push Press {w:95/65} · 10 Cleans {w:115/80}",
+ "15.5":"27-21-15-9: Cal Row · Thrusters {w:65/45}",
+ "16.1":"{ft:25} Front-Rack Walking Lunge {w:45/35} · 8 Burpees · {ft:25} Front-Rack Lunge · 8 Jumping Chin-over-Bar Pull-ups",
+ "16.5":"21-18-15-12-9-6-3: Thrusters {w:65/45} · Bar-facing Burpees",
+ "17.1":"DB Snatches 10-20-30-40-50 ({db:35/20}), nach jedem Satz 15 Burpee Box Step-overs {in:20}",
+ "17.3":"Jumping Chin-over-Bar Pull-ups + Squat Snatches: 6+6 @{w:45/35}, 7+5 @{w:75/55}, 8+4 @{w:95/65}, 9+3 @{w:115/75}, 10+2 @{w:135/95}, 11+1 @{w:155/105}. Start Cap 8 Min, +4 je Stufe",
+ "17.4":"55 Deadlifts {w:135/95} · 55 Wall Balls {w:20/10} auf {ft:9} · 55 Cal Row · 55 Hand-release Push-ups",
+ "17.5":"10 Runden: 9 Thrusters {w:65/45} · 35 Single-Unders",
+ "18.1":"8 Hanging Knee Raises · 10 DB Hang Clean & Jerks {db:35/20} · 14/12 Cal Row",
+ "18.2":"1-2-3 … 10: DB Squats {db:35/20} + Bar-facing Burpees (Step-over erlaubt); Restzeit 18.2a Clean 1RM",
+ "18.3":"2 Runden: 100 Single-Unders · 20 OHS {w:45/35} · 100 SU · 12 Chin-over-Bar Pull-ups · 100 SU · 20 DB Snatches {db:35/20} · 100 SU · 12 Chin-over-Bar Pull-ups",
+ "18.4":"21-15-9 Deadlifts {w:135/95} + Hand-release Push-ups, dann 21-15-9 Deadlifts {w:185/135} + {ft:50} Bear Crawl",
+ "18.5":"Leiter 3-6-9…: Thrusters {w:65/45} + Jumping Chin-over-Bar Pull-ups",
+ "19.1":"19 Wall Balls {w:14/10} · 19 Cal Row",
+ "19.2":"25 Hanging Knee Raises · 50 Single-Unders · 15 Squat Cleans {w:95/55} · 25 HKR · 50 SU · 13 @{w:115/75}; je +4 Min: 11 @{w:135/95}, 9 @{w:155/115}, 7 @{w:185/135}",
+ "19.3":"{ft:200} DB Front-Rack Lunge {db:50/35} · 50 DB Box Step-ups {in:24/20} · 50 erhöhte Strict HSPU · {ft:200} Bear Crawl",
+ "19.4":"3 Runden: 10 Snatches {w:65/45} · 12 Bar-facing Burpees (Step-over erlaubt); 3 Min Pause; 3 Runden: 10 Chin-over-Bar Pull-ups · 12 Bar-facing Burpees",
+ "19.5":"33-27-21-15-9: Thrusters {w:65/45} · Jumping Chin-over-Bar Pull-ups",
+ "20.1":"10 Runden: 8 Ground-to-Overhead {w:65/45} · 10 Bar-facing Burpees (Step-over erlaubt)",
+ "20.2":"4 DB Thrusters {db:35/20} · 6 Hanging Knee Raises · 24 Single-Unders",
+ "20.3":"21-15-9 Deadlifts {w:135/95} + Hand-release Push-ups, dann 21-15-9 Deadlifts {w:185/135} + {ft:50} Bear Crawl",
+ "20.4":"30 Box Step-ups {in:24/20} · 15 C&J {w:65/35} · 30 Step-ups · 15 C&J {w:95/55} · 30 Step-ups · 10 C&J {w:115/75} · 30 Med-Ball Box Step-ups · 10 C&J {w:135/95} · 30 MB Step-ups · 5 C&J {w:155/115} · 30 MB Step-ups · 5 C&J {w:185/135}",
+ "20.5":"Partitioniert: 40 Chin-over-Bar Pull-ups · 80 Cal Row · 120 Wall Balls {w:14/10}",
+ "21.1":"Scaled Wall Walks und Single-Unders: 1/10, 3/30, 6/60, 9/90, 15/150, 21/210",
+ "21.2":"DB Snatches 10-20-30-40-50 ({db:35/20}), nach jedem Satz 15 Burpee Box Step-overs {in:20}",
+ "21.3":"15 Front Squats · 30 Hanging Knee Raises · 15 Thrusters; 1 Min Pause; 15 FS · 30 Chin-over-Bar Pull-ups · 15 Thrusters; 1 Min Pause; 15 FS · 30 C2B · 15 Thrusters ({w:65/45})",
+ "21.4":"Komplex 1RM: Deadlift, Clean, Hang Clean, Jerk – wie Rx, direkt nach 21.3",
+ "22.1":"3 Scaled Wall Walks · 12 DB Snatches {db:35/20} · 15 Box Jump-overs {in:24/20} (Step-ups erlaubt)",
+ "22.2":"1-2-3 … 10 … 3-2-1: Deadlifts {w:135/95} + Bar-facing Burpees (Step-over erlaubt)",
+ "22.3":"21 Jumping Chin-over-Bar Pull-ups · 42 Single-Unders · 21 Thrusters {w:65/45} · 18 Chin-over-Bar · 36 SU · 18 Thrusters {w:85/55} · 15 C2B · 30 SU · 15 Thrusters {w:105/65}",
+ "23.1":"60 Cal Row · 50 Hanging Knee Raises · 40 Wall Balls {w:14/10} · 30 Cleans {w:95/65} · 20 Chin-over-Bar Pull-ups",
+ "23.2A":"Burpees und Shuttle Runs: 5 + 10 Shuttles, je Runde +5 Burpees",
+ "23.2B":"Thruster 1RM, direkt im Anschluss an 23.2A",
+ "23.3":"5 Scaled Wall Walks · 50 Single-Unders · 15 Snatches {w:65/45} · 5 WW · 50 SU · 12 Snatches {w:95/65}; bei Abschluss +3 Min: 20 Hand-release Push-ups · 50 SU · 9 @{w:115/75} · 20 HRPU · 50 SU · 6 @{w:135/85}",
+ "24.1":"21-15-9: DB Snatches Arm 1 · Lateral Burpees über DB · DB Snatches Arm 2 · Lateral Burpees ({db:35/20})",
+ "24.2":"300 m Row · 10 Deadlifts {w:135/95} · 50 Single-Unders",
+ "24.3":"5 Runden: 10 Thrusters {w:65/45} · 10 Jumping C2B; 1 Min Pause; 5 Runden: 7 Thrusters {w:95/65} · 7 Chin-over-Bar Pull-ups",
+ "25.1":"3 Lateral Burpees über DB · 3 DB Hang Clean-to-Overhead {db:35/20} · {ft:30} Walking Lunge; je Runde +3 Reps",
+ "25.2":"21 Jumping Pull-ups · 42 Single-Unders · 21 Thrusters {w:65/45} · 18 Pull-ups · 36 SU · 18 Thrusters {w:85/55} · 15 C2B · 30 SU · 15 Thrusters {w:105/65}",
+ "25.3":"5 Scaled Wall Walks · 50 Cal Row · 5 WW · 25 Deadlifts {w:135/85} · 5 WW · 25 Cleans {w:95/65} · 5 WW · 25 Snatches {w:65/45} · 5 WW · 50 Cal Row",
+ "26.1":"Wall Balls 20-30-40-66-40-30-20 ({w:14/10}), dazwischen je 18 Box Jump-overs {in:24/20} (Step-up erlaubt) bzw. Med-Ball Box Step-overs",
+ "26.2":"3 Runden: {ft:80} DB OH Walking Lunge · 20 DB Snatches ({db:35/20}) · 20 Jumping Pull-ups → 20 Pull-ups → 20 C2B",
+ "26.3":"3 Gewichtsstufen à 2 Runden: 12 Burpees over Bar (Step-over erlaubt) · 12 Cleans · 12 Burpees over Bar · 12 Thrusters ({w:65/85/95 · 45/55/65})",
+};
+function openDesc(w){
+  if(!w||!w.y)return {txt:w?w.desc:"",na:""};
+  if(cfg.div!=="sc")return {txt:w.desc,na:""};
+  if(SCALED[w.id])return {txt:SCALED[w.id],na:""};
+  return {txt:"",na:w.y<2015?"Scaled-Variante nicht verfügbar – die Scaled-Division gibt es erst seit 2015.":"Scaled-Variante nicht verfügbar."};
+}
+function descHtml(w){const d=openDesc(w);return d.na?`<p class="na">${d.na}</p>`:`<p>${U(d.txt)}</p>`}
 
 /* ===================== seven segment ===================== */
 const SEG={a:"6.5,4 10.5,0 39.5,0 43.5,4 39.5,8 10.5,8",g:"6.5,50 10.5,46 39.5,46 43.5,50 39.5,54 10.5,54",d:"6.5,96 10.5,92 39.5,92 43.5,96 39.5,100 10.5,100",f:"4,6.5 8,10.5 8,43.5 4,47.5 0,43.5 0,10.5",e:"4,52.5 8,56.5 8,89.5 4,93.5 0,89.5 0,56.5",b:"46,6.5 50,10.5 50,43.5 46,47.5 42,43.5 42,10.5",c:"46,52.5 50,56.5 50,89.5 46,93.5 42,89.5 42,56.5"};
@@ -424,7 +485,7 @@ const MODES=[
  {k:"tb",t:"Tabata",s:"20/10 × 8"},
  {k:"iv",t:"Intervall",s:"Work/Rest"},
 ];
-const DEF={mode:"ft",cap:1200,amrap:720,emInt:60,emRounds:10,tbWork:20,tbRest:10,tbRounds:8,ivWork:60,ivRest:30,ivRounds:5,prep:true,sound:true,hund:false,unit:"kg"};
+const DEF={mode:"ft",cap:1200,amrap:720,emInt:60,emRounds:10,tbWork:20,tbRest:10,tbRounds:8,ivWork:60,ivRest:30,ivRounds:5,prep:true,sound:true,hund:false,unit:"kg",div:"rx"};
 let cfg={...DEF};
 let preset=null; // loaded open workout
 try{const s=JSON.parse(localStorage.getItem("boxclock")||"null");if(s)cfg={...DEF,...s}}catch(e){}
@@ -710,7 +771,7 @@ function renderLoaded(){
   const box=$("loaded");
   if(!preset){box.hidden=true;$("wodname").textContent=MODES.find(x=>x.k===cfg.mode).t;return}
   box.hidden=false;
-  box.innerHTML=`<h3>${preset.name} <span class="badge ${preset.m}">${badge(preset)}</span><button class="x" type="button" id="unload">Entfernen</button></h3><p>${U(preset.desc)}</p>${rxHtml(preset)}${preset.marks&&preset.marks.length?`<small>Checkpoint-Signal bei ${preset.marks.map(x=>x+":00").join(", ")}</small>`:""}`;
+  box.innerHTML=`<h3>${preset.name} <span class="badge ${preset.m}">${badge(preset)}</span>${preset.y&&cfg.div==="sc"?'<span class="badge sc">Scaled</span>':""}<button class="x" type="button" id="unload">Entfernen</button></h3>${descHtml(preset)}${rxHtml(preset)}${preset.marks&&preset.marks.length?`<small>Checkpoint-Signal bei ${preset.marks.map(x=>x+":00").join(", ")}</small>`:""}`;
   $("unload").onclick=()=>{preset=null;renderAll();reset();renderWods();renderBench()};
   $("wodname").textContent=preset.name;
 }
@@ -733,6 +794,8 @@ function getCookie(n){try{const m=document.cookie.match(new RegExp("(?:^|; )"+n+
 function setCookie(n,v){try{document.cookie=n+"="+encodeURIComponent(v)+"; max-age=31536000; path=/; SameSite=Lax"+(location.protocol==="https:"?"; Secure":"")}catch(e){}}
 {const c=getCookie("wod_unit");if(c==="kg"||c==="lb")cfg.unit=c}
 function setUnit(u){cfg.unit=u;save();setCookie("wod_unit",u);$("uKg").setAttribute("aria-pressed",u!=="lb");$("uLb").setAttribute("aria-pressed",u==="lb");renderLoaded();if(typeof renderWods==="function"){renderWods();renderBench()}}
+function setDiv(d){cfg.div=d;save();$("dRx").setAttribute("aria-pressed",d!=="sc");$("dSc").setAttribute("aria-pressed",d==="sc");renderLoaded();if(typeof renderWods==="function")renderWods()}
+$("dRx").onclick=()=>setDiv("rx");$("dSc").onclick=()=>setDiv("sc");
 $("uKg").onclick=()=>setUnit("kg");$("uLb").onclick=()=>setUnit("lb");
 
 /* ===================== open archive UI ===================== */
@@ -744,13 +807,13 @@ function renderYears(){
 }
 function renderWods(){
   const q=$("q").value.trim().toLowerCase();
-  const list=W.filter(w=>(q?true:(yearSel==="Alle"||w.y===yearSel))&&(!q||(w.id+" "+U(w.desc)).toLowerCase().includes(q)));
+  const list=W.filter(w=>(q?true:(yearSel==="Alle"||w.y===yearSel))&&(!q||(w.id+" "+U(openDesc(w).txt||w.desc)).toLowerCase().includes(q)));
   const box=$("wods");box.innerHTML="";
   if(!list.length){box.innerHTML=`<p class="empty">Kein Workout gefunden. Probier eine Bewegung wie „Snatch“ oder eine Nummer wie „19.5“.</p>`;return}
   list.sort((a,b)=>b.y-a.y||a.id.localeCompare(b.id,undefined,{numeric:true}));
   list.forEach(w=>{
     const b=document.createElement("button");b.type="button";b.className="wod"+(preset===w?" active":"");
-    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${U(w.desc)}</p>${rxHtml(w)}<small>Tippen zum Laden</small>`;
+    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div>${descHtml(w)}${rxHtml(w)}<small>Tippen zum Laden</small>`;
     b.onclick=()=>loadPreset(w);box.appendChild(b);
   });
 }
@@ -759,7 +822,7 @@ function renderBench(){
   const box=$("bench");box.innerHTML="";
   BENCH.forEach(w=>{
     const b=document.createElement("button");b.type="button";b.className="wod"+(preset===w?" active":"");
-    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div><p>${U(w.desc)}</p>${rxHtml(w)}<small>Tippen zum Laden</small>`;
+    b.innerHTML=`<div class="wod-h"><strong>${w.id}</strong><span class="badge ${w.m}">${badge(w)}</span></div>${descHtml(w)}${rxHtml(w)}<small>Tippen zum Laden</small>`;
     b.onclick=()=>loadPreset(w);box.appendChild(b);
   });
 }
@@ -770,7 +833,7 @@ function selTab(i){TABS.forEach(([t,p],j)=>{$(t).setAttribute("aria-selected",i=
 TABS.forEach(([t],i)=>$(t).onclick=()=>selTab(i));
 
 /* boot */
-renderAll();renderYears();setUnit(cfg.unit);reset();
+renderAll();renderYears();setDiv(cfg.div==="sc"?"sc":"rx");setUnit(cfg.unit);reset();
 </script>
 
 </body>
